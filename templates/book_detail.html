@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Livro - Meta de Leitura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ book.name }}</h2>
+    <p class="subtitle">Detalhes e progresso de leitura</p>
+</div>
+
+{% if book.is_completed %}
+<div class="alert alert-success">
+    <strong>✓ Parabéns!</strong> Você concluiu a leitura deste livro!
+</div>
+{% endif %}
+
+<div class="book-detail-container">
+    <div class="detail-card">
+        <h3>Informações do Livro</h3>
+        <table class="info-table">
+            <tr>
+                <td class="label">Título:</td>
+                <td class="value">{{ book.name }}</td>
+            </tr>
+            <tr>
+                <td class="label">Total de Páginas:</td>
+                <td class="value">{{ book.total_pages }} páginas</td>
+            </tr>
+            <tr>
+                <td class="label">Data Limite:</td>
+                <td class="value">{{ book.target_date.strftime('%d/%m/%Y') }}</td>
+            </tr>
+            <tr>
+                <td class="label">Cadastrado em:</td>
+                <td class="value">{{ book.created_at.strftime('%d/%m/%Y às %H:%M') }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Progresso</h3>
+        <div class="progress-section">
+            <div class="progress-item">
+                <span class="label">Páginas Lidas:</span>
+                <span class="value">{{ book.current_page }} / {{ book.total_pages }}</span>
+            </div>
+            
+            <div class="progress-bar large">
+                <div class="progress-fill" style="width: {{ book.current_percentage }}%"></div>
+                <span class="progress-text">{{ "%.2f"|format(book.current_percentage) }}%</span>
+            </div>
+            
+            <div class="progress-item">
+                <span class="label">Páginas Restantes:</span>
+                <span class="value">{{ book.get_pages_remaining() }} páginas</span>
+            </div>
+        </div>
+    </div>
+    
+    {% if not book.is_completed %}
+    <div class="detail-card meta-card">
+        <h3>Meta Diária</h3>
+        <div class="meta-grid">
+            <div class="meta-box">
+                <div class="meta-icon">📅</div>
+                <div class="meta-content">
+                    <span class="meta-label">Dias para Ler:</span>
+                    <span class="meta-value">{{ book.get_days_remaining() }}</span>
+                </div>
+            </div>
+            
+            <div class="meta-box">
+                <div class="meta-icon">📖</div>
+                <div class="meta-content">
+                    <span class="meta-label">Páginas por Dia:</span>
+                    <span class="meta-value">{{ "%.2f"|format(book.get_pages_per_day()) }}</span>
+                </div>
+            </div>
+            
+            <div class="meta-box">
+                <div class="meta-icon">⏱️</div>
+                <div class="meta-content">
+                    <span class="meta-label">Tempo Médio por Página:</span>
+                    <span class="meta-value">{{ "%.1f"|format((book.get_pages_per_day() * 2.5) if book.get_pages_per_day() > 0 else 0) }} min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="detail-actions">
+    <a href="{{ url_for('main.edit_book', book_id=book.id) }}" class="btn btn-warning">Editar Progresso</a>
+    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

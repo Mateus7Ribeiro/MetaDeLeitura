@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Livro - Meta de Leitura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Editar {{ book.name }}</h2>
+    <p class="subtitle">Atualize o progresso de leitura</p>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Erro:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-group">
+            <label for="name">Nome do Livro *</label>
+            <input type="text" id="name" name="name" value="{{ book.name }}" required placeholder="Ex: O Hobbit">
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="total_pages">Total de Páginas *</label>
+                <input type="number" id="total_pages" name="total_pages" value="{{ book.total_pages }}" required min="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="current_page">Páginas Lidas Atualmente *</label>
+                <input type="number" id="current_page" name="current_page" value="{{ book.current_page }}" required min="0" max="{{ book.total_pages }}">
+            </div>
+        </div>
+        
+        <div class="progress-display">
+            <span id="percentDisplay">{{ "%.2f"|format(book.current_percentage) }}%</span>
+            <div class="progress-bar" style="margin-top: 10px;">
+                <div class="progress-fill" id="progressPreview" style="width: {{ book.current_percentage }}%"></div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="target_date">Data Limite para Conclusão *</label>
+            <input type="date" id="target_date" name="target_date" value="{{ book.target_date.strftime('%Y-%m-%d') }}" required>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            <a href="{{ url_for('main.view_book', book_id=book.id) }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const totalPagesInput = document.getElementById('total_pages');
+    const currentPageInput = document.getElementById('current_page');
+    const percentDisplay = document.getElementById('percentDisplay');
+    const progressPreview = document.getElementById('progressPreview');
+    
+    function updateProgress() {
+        const total = parseInt(totalPagesInput.value) || 1;
+        const current = parseInt(currentPageInput.value) || 0;
+        const percent = ((current / total) * 100).toFixed(2);
+        percentDisplay.textContent = percent + '%';
+        progressPreview.style.width = percent + '%';
+        currentPageInput.max = total;
+    }
+    
+    totalPagesInput.addEventListener('change', updateProgress);
+    currentPageInput.addEventListener('input', updateProgress);
+</script>
+{% endblock %}
