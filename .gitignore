@@ -3,6 +3,12 @@ venv/
 env/
 ENV/
 
+# Variáveis de Ambiente (NUNCA COMMITAR)
+.env
+.env.local
+.env.production
+.env.*.local
+
 # Arquivos do Python
 __pycache__/
 *.py[cod]
@@ -28,6 +34,34 @@ wheels/
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Banco de Dados Local
+*.db
+*.sqlite
+*.sqlite3
+
+# Flask
+instance/
+.webassets-cache
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Arquivos Temporários
+*.tmp
+*.bak
+temp/
+tmp/
 *.swp
 *.swo
 *~
