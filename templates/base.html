@@ -11,8 +11,16 @@
         <div class="container">
             <h1 class="logo">📚 Meta de Leitura</h1>
             <nav>
-                <a href="{{ url_for('main.index') }}" class="nav-link">Meus Livros</a>
-                <a href="{{ url_for('main.add_book') }}" class="nav-link btn-primary">+ Novo Livro</a>
+                {% if session.get('user_id') %}
+                    <span class="user-info">👤 {{ session.get('username') }}</span>
+                    <a href="{{ url_for('auth.settings') }}" class="nav-link">⚙️ Configurações</a>
+                    <a href="{{ url_for('main.index') }}" class="nav-link">Meus Livros</a>
+                    <a href="{{ url_for('main.add_book') }}" class="nav-link btn-primary">+ Novo Livro</a>
+                    <a href="{{ url_for('auth.logout') }}" class="nav-link btn-danger">Sair</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-link btn-primary">Registrar</a>
+                {% endif %}
             </nav>
         </div>
     </header>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar - Meta de Leitura</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-box">
+            <h1 class="auth-logo">📚 Meta de Leitura</h1>
+            <h2>Criar Conta</h2>
+            
+            {% if error %}
+            <div class="alert alert-danger">
+                <strong>Erro:</strong> {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" class="form">
+                <div class="form-group">
+                    <label for="username">Nome de Usuário</label>
+                    <input type="text" id="username" name="username" required placeholder="Escolha um nome de usuário">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="Seu email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" required placeholder="Mínimo 6 caracteres">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password_confirm">Confirmar Senha</label>
+                    <input type="password" id="password_confirm" name="password_confirm" required placeholder="Confirme sua senha">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Criar Conta</button>
+            </form>
+            
+            <p class="auth-footer">
+                Já tem conta? <a href="{{ url_for('auth.login') }}">Faça login aqui</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

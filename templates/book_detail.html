@@ -80,8 +80,8 @@
             <div class="meta-box">
                 <div class="meta-icon">⏱️</div>
                 <div class="meta-content">
-                    <span class="meta-label">Tempo Médio por Página:</span>
-                    <span class="meta-value">{{ "%.1f"|format((book.get_pages_per_day() * 2.5) if book.get_pages_per_day() > 0 else 0) }} min</span>
+                    <span class="meta-label">Tempo Diário de Leitura:</span>
+                    <span class="meta-value">{{ "%.1f"|format(book.get_daily_reading_time()) }} min</span>
                 </div>
             </div>
         </div>

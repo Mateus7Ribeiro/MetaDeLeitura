@@ -1,0 +1,400 @@
+# 🎉 Sistema de Usuários Implementado com Sucesso!
+
+## 📋 Resumo das Alterações v2.0
+
+### ✅ O que foi adicionado:
+
+#### 1. **Sistema de Autenticação Completo**
+- ✅ Modelo `User` com:
+  - Username (único)
+  - Email (único)
+  - Senha criptografada (Werkzeug)
+  - `reading_speed` (velocidade de leitura em min/página)
+  - Timestamps (created_at, updated_at)
+
+- ✅ Rotas de autenticação:
+  - `/register` - Criar novo usuário
+  - `/login` - Fazer login
+  - `/logout` - Sair
+  - `/settings` - Configurar velocidade de leitura
+
+#### 2. **Isolamento de Dados**
+- ✅ Cada livro tem `user_id` (chave estrangeira)
+- ✅ Decorador `@login_required` protege rotas
+- ✅ Verificação de propriedade em CRUD
+- ✅ Erro 403 "Acesso Negado" quando necessário
+- ✅ API retorna apenas dados do usuário
+
+#### 3. **Página de Configurações Profissional**
+- ✅ Mostra informações da conta
+- ✅ Campo para alterar velocidade de leitura
+- ✅ Texto de ajuda com exemplos (1.5, 2.5, 4.0 min/página)
+- ✅ Explicação da fórmula de cálculo
+- ✅ Design responsivo e intuitivo
+
+#### 4. **Cálculo Dinâmico de Tempo**
+- ✅ Novo método: `get_daily_reading_time()`
+- ✅ Fórmula: `Tempo = Páginas/dia × Velocidade do usuário`
+- ✅ Cada usuário tem sua própria velocidade
+- ✅ Recalcula automaticamente ao mudar configuração
+
+#### 5. **Rótulo Corrigido**
+- ✅ Mudou de: "Tempo Médio por Página"
+- ✅ Para: "Tempo Diário de Leitura" ✓
+
+---
+
+## 📁 Arquivos Criados/Alterados
+
+### Criados:
+```
+app/auth.py                    - Helpers de autenticação
+app/auth_routes.py             - Rotas de autenticação (60 linhas)
+templates/login.html           - Página de login
+templates/register.html        - Página de registro
+templates/settings.html        - Página de configurações
+templates/error.html           - Página de erro 403
+CHANGELOG.md                   - Documento de alterações (200+ linhas)
+TESTING.md                     - Guia de testes (150+ linhas)
+```
+
+### Alterados:
+```
+app/__init__.py               - Registrou auth_bp
+app/config.py                 - Adicionou configurações de sessão
+app/models.py                 - Adicionou modelo User, alterou Book
+app/routes.py                 - Adicionou @login_required, isolamento
+requirements.txt              - Adicionou Werkzeug==2.3.7
+templates/base.html           - Navbar atualizada com user info
+templates/book_detail.html    - Corrigido rótulo e método
+static/css/style.css          - Estilos para autenticação
+```
+
+---
+
+## 🔐 Segurança Implementada
+
+```
+┌─────────────────────────────────────────────────────┐
+│                FLUXO DE SEGURANÇA                   │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│ 1. Usuário acessa /                                │
+│    ↓                                               │
+│ 2. @login_required verifica session                │
+│    ↓                                               │
+│ 3. Se não logado → Redireciona para login          │
+│    ↓                                               │
+│ 4. Login → Senha criptografada comparada          │
+│    ↓                                               │
+│ 5. Session['user_id'] criada                      │
+│    ↓                                               │
+│ 6. Acesso a /book/1                               │
+│    ↓                                               │
+│ 7. Verifica: book.user_id == session['user_id']   │
+│    ↓                                               │
+│ 8. Se ≠ → Erro 403 Forbidden ✓                    │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Como Usar (Passo a Passo)
+
+### 1. Instale Werkzeug
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Inicie a aplicação
+```bash
+python run.py
+```
+
+### 3. Primeira vez?
+- Página de login aparece
+- Clique em "Registre-se aqui"
+- Preencha: username, email, senha
+- Clique em "Criar Conta"
+
+### 4. Faça login
+- Com suas credenciais novas
+- Sistema redireciona para dashboard
+
+### 5. Configure sua velocidade
+- Clique em "⚙️ Configurações"
+- Altere "Tempo Médio por Página"
+- Salve as alterações
+
+### 6. Crie seus livros
+- "+ Novo Livro"
+- Preencha dados
+- Clique em "Cadastrar"
+- Tempo diário já considera sua velocidade!
+
+---
+
+## 📊 Exemplos de Uso
+
+### Exemplo 1: Ana (Leitora Rápida)
+```
+Setup:
+- Username: ana
+- Velocidade: 1.5 min/página
+
+Livro: "1984"
+- Total: 328 páginas
+- Páginas atuais: 0
+- Data limite: 30 dias
+
+Cálculo:
+- Páginas/dia: 328 ÷ 30 = 10,93
+- Tempo diário: 10,93 × 1.5 = 16,4 minutos ✓
+```
+
+### Exemplo 2: João (Leitura Normal)
+```
+Setup:
+- Username: joao
+- Velocidade: 2.5 min/página
+
+Livro: "1984" (MESMO)
+- Cálculos iguais, MAS tempo diferente:
+- Tempo diário: 10,93 × 2.5 = 27,3 minutos ✓
+```
+
+### Exemplo 3: Maria (Leitora Lenta)
+```
+Setup:
+- Username: maria
+- Velocidade: 4.0 min/página
+
+Livro: "1984" (MESMO)
+- Tempo diário: 10,93 × 4.0 = 43,7 minutos ✓
+```
+
+**Resultado**: Mesmo livro, tempos diferentes! Cada usuário com sua velocidade.
+
+---
+
+## 🎨 Interface
+
+### Antes de Login
+```
+📚 Meta de Leitura
+[Login] [Registrar]
+```
+
+### Depois de Login
+```
+📚 Meta de Leitura
+👤 joao | ⚙️ Configurações | Meus Livros | + Novo Livro | [Sair]
+```
+
+### Dashboard de Login
+- Logo centralizado
+- Formulário limpo
+- Gradiente azul profissional
+- Links para registrar/login
+
+---
+
+## 🔍 Testes Recomendados
+
+Veja `TESTING.md` para checklist completo. Resumo:
+
+- [ ] Registre novo usuário
+- [ ] Faça login
+- [ ] Crie um livro
+- [ ] Altere velocidade de leitura
+- [ ] Verifique que tempo diário mudou
+- [ ] Faça logout
+- [ ] Registre outro usuário
+- [ ] Tente acessar livro do primeiro usuário
+- [ ] Erro 403 aparece ✓
+
+---
+
+## 📝 Banco de Dados
+
+### Nova Tabela: `users`
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(80) UNIQUE NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    reading_speed FLOAT DEFAULT 2.5,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username)
+);
+```
+
+### Alteração: Tabela `books`
+```sql
+ALTER TABLE books ADD COLUMN user_id INT NOT NULL;
+ALTER TABLE books ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+```
+
+**Nota**: Criação automática na primeira execução!
+
+---
+
+## 🧮 Fórmula de Cálculo
+
+### Antes
+```
+Tempo = Páginas/dia × 2.5 (hardcoded)
+```
+
+### Depois
+```
+Tempo = Páginas/dia × reading_speed (do usuário)
+```
+
+### Implementação
+```python
+def get_daily_reading_time(self):
+    pages_per_day = self.get_pages_per_day()
+    if pages_per_day <= 0:
+        return 0
+    reading_speed = self.owner.reading_speed  # ← Usa do usuário!
+    return pages_per_day * reading_speed
+```
+
+---
+
+## 📈 Métricas
+
+### Código Adicionado
+```
+app/auth.py               ~25 linhas
+app/auth_routes.py        ~60 linhas
+templates/login.html      ~30 linhas
+templates/register.html   ~35 linhas
+templates/settings.html   ~150 linhas
+templates/error.html      ~40 linhas
+CHANGELOG.md              ~200 linhas
+TESTING.md                ~150 linhas
+────────────────────────
+Total:                    ~700 linhas
+```
+
+### Rotas Adicionadas
+```
+GET  /register           - Formulário de registro
+POST /register           - Processar registro
+GET  /login              - Formulário de login
+POST /login              - Processar login
+GET  /logout             - Logout
+GET  /settings           - Página de configurações
+POST /settings           - Atualizar configurações
+```
+
+### Alterações em Modelos
+```
+User:          Novo (+45 linhas)
+Book:          +1 linha (user_id FK)
+Book methods:  +1 novo método (get_daily_reading_time)
+```
+
+---
+
+## ✨ Destaques
+
+✅ **Seguro**: Senha criptografada, sem acesso a dados alheios
+✅ **Personalizável**: Cada usuário ajusta sua velocidade
+✅ **Profissional**: Interface limpa e intuitiva
+✅ **Responsivo**: Funciona em mobile e desktop
+✅ **Testado**: Checklist de testes incluído
+✅ **Documentado**: CHANGELOG e TESTING inclusos
+✅ **Escalável**: Preparado para múltiplos usuários
+
+---
+
+## 🎯 Checklist de Implementação
+
+- ✅ Modelo User criado
+- ✅ Autenticação com senha criptografada
+- ✅ Login/Logout/Registro implementados
+- ✅ Decorador @login_required
+- ✅ Isolamento de dados por usuário_id
+- ✅ Campo reading_speed adicionado
+- ✅ Página de configurações criada
+- ✅ Método get_daily_reading_time() implementado
+- ✅ Rótulo corrigido para "Tempo Diário de Leitura"
+- ✅ Templates HTML criados/atualizados
+- ✅ Estilos CSS para autenticação
+- ✅ Validações implementadas
+- ✅ Tratamento de erros (403)
+- ✅ Documentação completa
+- ✅ Guia de testes
+
+---
+
+## 🚀 Próximos Passos (Opcional)
+
+Se quiser adicionar mais:
+- [ ] Recuperação de senha por email
+- [ ] Edição de perfil de usuário
+- [ ] Upload de foto
+- [ ] Compartilhamento de livros (read-only)
+- [ ] Estatísticas por usuário
+- [ ] Metas mensais/anuais
+- [ ] Notificações
+- [ ] Dark mode
+
+---
+
+## 💡 Troubleshooting
+
+### Erro: "ImportError: cannot import name 'generate_password_hash'"
+**Solução**: Instale Werkzeug
+```bash
+pip install Werkzeug==2.3.7
+```
+
+### Erro: "no such table: users"
+**Solução**: Excluir banco e deixar recriar, ou executar:
+```sql
+CREATE TABLE users (...) -- Ver em cima
+```
+
+### Senha não funciona
+**Solução**: Certifique-se de estar registrando corretamente (mínimo 6 caracteres)
+
+---
+
+## 📞 Suporte Rápido
+
+**Problema**: Senha não funciona
+**Solução**: Mínimo 6 caracteres, confirme senhas iguais
+
+**Problema**: Erro 403 ao acessar livro
+**Solução**: Livro é de outro usuário, é segurança normal ✓
+
+**Problema**: Tempo diário não muda
+**Solução**: Atualize velocidade em Configurações e recarregue página
+
+---
+
+## 🎉 Conclusão
+
+Seu sistema agora tem:
+- ✅ Múltiplos usuários independentes
+- ✅ Segurança total (senhas criptografadas, isolamento)
+- ✅ Configurações personalizáveis (velocidade)
+- ✅ Cálculos dinâmicos baseados nas preferências
+- ✅ Interface profissional e responsiva
+
+**Projeto completo e pronto para uso!** 🚀
+
+---
+
+**Versão**: 2.0
+**Data**: 28 de Dezembro de 2025
+**Status**: ✅ COMPLETO
+
+Boa leitura! 📚

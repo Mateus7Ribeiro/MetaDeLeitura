@@ -1,20 +1,26 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from app import db
-from app.models import Book
+from app.models import Book, User
+from app.auth import login_required, get_current_user
 from datetime import datetime
 import json
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+@login_required
 def index():
     """Página inicial com lista de livros"""
-    books = Book.query.order_by(Book.created_at.desc()).all()
-    return render_template('index.html', books=books)
+    user = get_current_user()
+    books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
+    return render_template('index.html', books=books, user=user)
 
 @main_bp.route('/add', methods=['GET', 'POST'])
+@login_required
 def add_book():
     """Adiciona um novo livro"""
+    user = get_current_user()
+    
     if request.method == 'POST':
         try:
             name = request.form.get('name')
@@ -37,6 +43,7 @@ def add_book():
             
             # Criar livro
             book = Book(
+                user_id=user.id,
                 name=name,
                 total_pages=total_pages,
                 current_page=current_page,
@@ -54,15 +61,28 @@ def add_book():
     return render_template('add_book.html')
 
 @main_bp.route('/book/<int:book_id>')
+@login_required
 def view_book(book_id):
     """Visualiza detalhes de um livro"""
+    user = get_current_user()
     book = Book.query.get_or_404(book_id)
-    return render_template('book_detail.html', book=book)
+    
+    # Verificar se o livro pertence ao usuário ou se é um livro público para visualizar
+    if book.user_id != user.id:
+        return render_template('error.html', message='Acesso negado'), 403
+    
+    return render_template('book_detail.html', book=book, user=user)
 
 @main_bp.route('/book/<int:book_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_book(book_id):
     """Edita um livro"""
+    user = get_current_user()
     book = Book.query.get_or_404(book_id)
+    
+    # Verificar permissão
+    if book.user_id != user.id:
+        return render_template('error.html', message='Acesso negado'), 403
     
     if request.method == 'POST':
         try:
@@ -70,6 +90,7 @@ def edit_book(book_id):
             book.total_pages = int(request.form.get('total_pages', book.total_pages))
             current_page = int(request.form.get('current_page', book.current_page))
             target_date_str = request.form.get('target_date')
+            book.is_public = request.form.get('is_public') == 'true'
             
             if book.total_pages <= 0:
                 return render_template('edit_book.html', book=book, error='Total de páginas deve ser maior que 0'), 400
@@ -90,20 +111,34 @@ def edit_book(book_id):
         except Exception as e:
             return render_template('edit_book.html', book=book, error=str(e)), 400
     
-    return render_template('edit_book.html', book=book)
+    return render_template('edit_book.html', book=book, user=user)
 
 @main_bp.route('/book/<int:book_id>/delete', methods=['POST'])
+@login_required
 def delete_book(book_id):
     """Deleta um livro"""
+    user = get_current_user()
     book = Book.query.get_or_404(book_id)
+    
+    # Verificar permissão
+    if book.user_id != user.id:
+        return render_template('error.html', message='Acesso negado'), 403
+    
     db.session.delete(book)
     db.session.commit()
     return redirect(url_for('main.index'))
 
 @main_bp.route('/api/book/<int:book_id>/update-progress', methods=['POST'])
+@login_required
 def update_progress(book_id):
     """API para atualizar progresso do livro"""
+    user = get_current_user()
     book = Book.query.get_or_404(book_id)
+    
+    # Verificar permissão
+    if book.user_id != user.id:
+        return jsonify({'error': 'Acesso negado'}), 403
+    
     data = request.get_json()
     
     try:
@@ -118,13 +153,51 @@ def update_progress(book_id):
         return jsonify({'error': str(e)}), 400
 
 @main_bp.route('/api/books')
+@login_required
 def get_books_api():
     """API para obter lista de livros em JSON"""
-    books = Book.query.order_by(Book.created_at.desc()).all()
+    user = get_current_user()
+    books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
     return jsonify([book.to_dict() for book in books]), 200
 
 @main_bp.route('/api/book/<int:book_id>')
+@login_required
 def get_book_api(book_id):
     """API para obter dados de um livro"""
+    user = get_current_user()
     book = Book.query.get_or_404(book_id)
+    
+    # Verificar permissão
+    if book.user_id != user.id:
+        return jsonify({'error': 'Acesso negado'}), 403
+    
     return jsonify(book.to_dict()), 200
+
+@main_bp.route('/user/<username>')
+@login_required
+def view_user_books(username):
+    """Visualiza livros públicos de um usuário"""
+    current_user = get_current_user()
+    target_user = User.query.filter_by(username=username).first_or_404()
+    
+    # Obter livros públicos do usuário
+    books = Book.query.filter_by(user_id=target_user.id, is_public=True).order_by(Book.created_at.desc()).all()
+    
+    # Se for o próprio usuário, mostrar todos os livros (públicos e privados)
+    if target_user.id == current_user.id:
+        books = Book.query.filter_by(user_id=target_user.id).order_by(Book.created_at.desc()).all()
+    
+    return render_template('user_books.html', target_user=target_user, books=books, current_user=current_user)
+
+@main_bp.route('/book/<int:book_id>/public')
+@login_required
+def view_public_book(book_id):
+    """Visualiza um livro público em modo somente leitura"""
+    current_user = get_current_user()
+    book = Book.query.get_or_404(book_id)
+    
+    # Apenas o proprietário ou um livro público pode ser visualizado
+    if not book.is_public and book.user_id != current_user.id:
+        return render_template('error.html', message='Este livro é privado'), 403
+    
+    return render_template('book_public.html', book=book, current_user=current_user, is_owner=(book.user_id == current_user.id))

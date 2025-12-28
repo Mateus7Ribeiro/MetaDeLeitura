@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Livros de {{ target_user.username }} - Meta de Leitura{% endblock %}
+
+{% block content %}
+<div class="books-container">
+    <div class="user-header">
+        <h1>📚 Livros de {{ target_user.username }}</h1>
+        {% if target_user.id == current_user.id %}
+            <p class="subtitle">Seus Livros (Públicos e Privados)</p>
+        {% else %}
+            <p class="subtitle">Livros Públicos</p>
+        {% endif %}
+    </div>
+
+    {% if books %}
+        <div class="books-grid">
+            {% for book in books %}
+                <div class="book-card">
+                    <div class="book-header">
+                        <h3>{{ book.name }}</h3>
+                        {% if target_user.id == current_user.id %}
+                            <span class="badge {% if book.is_public %}badge-public{% else %}badge-private{% endif %}">
+                                {% if book.is_public %}🔓 Público{% else %}🔒 Privado{% endif %}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="book-info">
+                        <div class="info-row">
+                            <span class="label">Progresso:</span>
+                            <span class="value">{{ "%.1f"|format(book.current_percentage) }}%</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Páginas:</span>
+                            <span class="value">{{ book.current_page }} / {{ book.total_pages }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Data Meta:</span>
+                            <span class="value">{{ book.target_date.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                        {% if book.is_completed %}
+                            <div class="info-row">
+                                <span class="badge badge-completed">✅ Concluído</span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ book.current_percentage }}%"></div>
+                    </div>
+
+                    <div class="book-actions">
+                        <a href="{{ url_for('main.view_public_book', book_id=book.id) }}" class="btn btn-secondary">
+                            👁️ Ver Detalhes
+                        </a>
+                        {% if target_user.id == current_user.id %}
+                            <a href="{{ url_for('main.edit_book', book_id=book.id) }}" class="btn btn-primary">
+                                ✏️ Editar
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            {% if target_user.id == current_user.id %}
+                <p>Você ainda não tem livros. <a href="{{ url_for('main.add_book') }}">Adicione um!</a></p>
+            {% else %}
+                <p>Este usuário não tem livros públicos.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.user-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.user-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2.5rem;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.badge-public {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-private {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.badge-completed {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.book-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.book-header {
+    margin-bottom: 1rem;
+}
+
+.book-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+    color: #333;
+}
+
+.book-info {
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-row .label {
+    color: #666;
+    font-weight: 500;
+}
+
+.info-row .value {
+    color: #333;
+    font-weight: 600;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    transition: width 0.3s ease;
+}
+
+.book-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.book-actions .btn {
+    flex: 1;
+    text-align: center;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #999;
+    font-size: 1.1rem;
+}
+
+.empty-state a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.empty-state a:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}
