@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from app import db
-from app.models import Book, User, CollectiveReading, CollectiveReadingBook, CollectiveReadingParticipant
+from app.models import Book, User, CollectiveReading, CollectiveReadingBook, CollectiveReadingParticipant, UserFollower
 from app.auth import login_required, get_current_user
 from datetime import datetime
 import json
@@ -15,6 +15,80 @@ def index():
     user = get_current_user()
     books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
     return render_template('index.html', books=books, user=user)
+
+@main_bp.route('/profile/<user_hash>')
+def view_profile(user_hash):
+    """Visualizar perfil de um usuário via hash"""
+    user = User.query.filter_by(user_hash=user_hash).first_or_404()
+    current_user = get_current_user() if session.get('user_id') else None
+    
+    # Buscar livros do usuário
+    books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
+    
+    # Contar seguidores
+    followers_count = len(user.followers)
+    following_count = len(user.following)
+    
+    # Verificar se já está seguindo
+    is_following = False
+    if current_user and current_user.id != user.id:
+        from app.models import UserFollower
+        is_following = UserFollower.query.filter_by(
+            follower_id=current_user.id,
+            following_id=user.id
+        ).first() is not None
+    
+    return render_template('user_profile.html', 
+                         profile_user=user, 
+                         user=current_user,
+                         books=books,
+                         followers_count=followers_count,
+                         following_count=following_count,
+                         is_following=is_following)
+
+@main_bp.route('/user/<int:user_id>/follow', methods=['POST'])
+@login_required
+def follow_user(user_id):
+    """Seguir um usuário"""
+    current_user = get_current_user()
+    target_user = User.query.get_or_404(user_id)
+    
+    if current_user.id == target_user.id:
+        return jsonify({'error': 'Você não pode seguir a si mesmo'}), 400
+    
+    from app.models import UserFollower
+    
+    # Verificar se já está seguindo
+    existing = UserFollower.query.filter_by(
+        follower_id=current_user.id,
+        following_id=target_user.id
+    ).first()
+    
+    if not existing:
+        follower = UserFollower(follower_id=current_user.id, following_id=target_user.id)
+        db.session.add(follower)
+        db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'Você está seguindo {target_user.username}'}), 200
+
+@main_bp.route('/user/<int:user_id>/unfollow', methods=['POST'])
+@login_required
+def unfollow_user(user_id):
+    """Parar de seguir um usuário"""
+    current_user = get_current_user()
+    target_user = User.query.get_or_404(user_id)
+    
+    from app.models import UserFollower
+    
+    follower = UserFollower.query.filter_by(
+        follower_id=current_user.id,
+        following_id=target_user.id
+    ).first_or_404()
+    
+    db.session.delete(follower)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'Você parou de seguir {target_user.username}'}), 200
 
 @main_bp.route('/add', methods=['GET', 'POST'])
 @login_required
@@ -185,14 +259,33 @@ def view_user_books(username):
     current_user = get_current_user()
     target_user = User.query.filter_by(username=username).first_or_404()
     
-    # Obter livros públicos do usuário
-    books = Book.query.filter_by(user_id=target_user.id, is_public=True).order_by(Book.created_at.desc()).all()
+    # Obter livros próprios do usuário
+    user_books = Book.query.filter_by(user_id=target_user.id, is_public=True).order_by(Book.created_at.desc()).all()
     
     # Se for o próprio usuário, mostrar todos os livros (públicos e privados)
     if target_user.id == current_user.id:
-        books = Book.query.filter_by(user_id=target_user.id).order_by(Book.created_at.desc()).all()
+        user_books = Book.query.filter_by(user_id=target_user.id).order_by(Book.created_at.desc()).all()
     
-    return render_template('user_books.html', target_user=target_user, books=books, current_user=current_user)
+    # Obter livros das leituras coletivas que o usuário está participando
+    collective_books = []
+    if target_user.id == current_user.id:  # Mostrar leituras coletivas apenas para o próprio usuário
+        participations = CollectiveReading.query.join(
+            CollectiveReadingParticipant
+        ).filter(
+            CollectiveReadingParticipant.user_id == current_user.id
+        ).all()
+        
+        for participation in participations:
+            for book in participation.books:
+                # Criar um wrapper para o livro com informação de leitura coletiva
+                book.collective_reading = participation
+                collective_books.append(book)
+    
+    return render_template('user_books.html', 
+                         target_user=target_user, 
+                         books=user_books, 
+                         collective_books=collective_books,
+                         current_user=current_user)
 
 @main_bp.route('/book/<int:book_id>/public')
 @login_required
@@ -222,7 +315,7 @@ def list_collective():
         CollectiveReadingParticipant.user_id == user.id
     ).order_by(CollectiveReading.created_at.desc()).all()
     
-    return render_template('collective_list.html', created=created, participations=participations, user=user)
+    return render_template('collective_list.html', participations=participations, created=created, user=user)
 
 @main_bp.route('/collective/create', methods=['GET', 'POST'])
 @login_required
@@ -344,12 +437,20 @@ def view_collective(collective_id):
     collective = CollectiveReading.query.get_or_404(collective_id)
     user = get_current_user() if session.get('user_id') else None
     
-    # Se não é o criador, precisa estar na URL com hash
-    if user is None or user.id != collective.creator_id:
-        # Verificar se veio por hash
-        share_hash = request.args.get('hash')
-        if share_hash != collective.share_hash:
-            return render_template('error.html', message='Link inválido'), 404
+    # Se é o criador, pode ver sempre
+    if user and user.id == collective.creator_id:
+        return render_template('collective_view.html', collective=collective, user=user)
+    
+    # Para outros usuários (ou não logados), verificar hash
+    share_hash = request.args.get('hash')
+    
+    # Se não tem hash na URL, redirecionar para o link de compartilhamento
+    if not share_hash:
+        return redirect(url_for('main.join_collective_by_hash', share_hash=collective.share_hash))
+    
+    # Validar hash
+    if share_hash != collective.share_hash:
+        return render_template('error.html', message='Link inválido'), 404
     
     return render_template('collective_view.html', collective=collective, user=user)
 
@@ -402,6 +503,26 @@ def update_collective_progress(collective_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+@main_bp.route('/collective/<int:collective_id>/leave', methods=['POST'])
+@login_required
+def leave_collective(collective_id):
+    """Sair de uma leitura coletiva"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Verificar se está participando
+    participant = CollectiveReadingParticipant.query.filter_by(
+        collective_reading_id=collective.id,
+        user_id=user.id
+    ).first()
+    
+    if participant:
+        db.session.delete(participant)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Você saiu da leitura coletiva'}), 200
+    
+    return jsonify({'error': 'Você não está participando desta leitura'}), 400
+
 @main_bp.route('/collective/share/<share_hash>')
 def join_collective_by_hash(share_hash):
     """Entrar em leitura coletiva via link compartilhável"""
@@ -410,8 +531,8 @@ def join_collective_by_hash(share_hash):
     user = get_current_user() if session.get('user_id') else None
     
     if user:
-        # Se logado, redirecionar para join
-        return redirect(url_for('main.join_collective', collective_id=collective.id))
+        # Se logado, redirecionar para view com hash na URL
+        return redirect(url_for('main.view_collective', collective_id=collective.id, hash=share_hash))
     else:
         # Se não logado, mostrar página com opção de login/registro
         return render_template('collective_view.html', collective=collective, user=None, share_hash=share_hash)

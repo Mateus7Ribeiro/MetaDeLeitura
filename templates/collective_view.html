@@ -18,18 +18,24 @@
         <div class="header-actions">
             {% if user and user.id == collective.creator_id %}
                 <a href="{{ url_for('main.edit_collective', collective_id=collective.id) }}" class="btn btn-primary">✏️ Editar</a>
-            {% elif user %}
-                {% set is_participant = false %}
-                {% for participant in collective.participants %}
-                    {% if participant.user.id == user.id %}
-                        {% set is_participant = true %}
+            {% endif %}
+            {% if user %}
+                {% set ns = namespace(is_participant=false) %}
+                    {% for participant in collective.participants %}
+                        {% if participant.user.id == user.id %}
+                            {% set ns.is_participant = true %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if ns.is_participant %}
+                        <div class="participant-actions">
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="leaveCollective()">🚪 Sair da Leitura</button>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('main.join_collective', collective_id=collective.id) }}"
+                        class="btn btn-primary">👥 Aderir</a>
                     {% endif %}
-                {% endfor %}
-                {% if is_participant %}
-                    <span class="badge badge-success">✅ Você está participando</span>
-                {% else %}
-                    <a href="{{ url_for('main.join_collective', collective_id=collective.id) }}" class="btn btn-primary">👥 Aderir</a>
-                {% endif %}
             {% else %}
                 <a href="{{ url_for('auth.login') }}" class="btn btn-primary">🔐 Login para Participar</a>
             {% endif %}
@@ -54,7 +60,11 @@
                         <p class="book-dates">{{ book.start_date.strftime('%d/%m') }} - {{ book.end_date.strftime('%d/%m/%Y') }}</p>
                         
                         {% set days_total = (book.end_date - book.start_date).days %}
-                        {% set pages_per_day = book.total_pages / max(days_total, 1) %}
+                        {% if days_total <= 0 %}
+                            {% set pages_per_day = book.total_pages %}
+                        {% else %}
+                            {% set pages_per_day = book.total_pages / days_total %}
+                        {% endif %}
                         <p class="book-pace">{{ "%.1f"|format(pages_per_day) }} pág/dia</p>
                     </div>
                 </div>
@@ -198,7 +208,7 @@
         });
     });
 
-    // Gráfico de comparação
+    // Gráfico de comparação (horizontal)
     const chartCanvas = document.getElementById('progressChart');
     if (chartCanvas) {
         const participants = {{ collective.participants|length }};
@@ -207,7 +217,7 @@
         const ideal = [{% for p in collective.participants %}{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}{{ "," if not loop.last else "" }}{% endfor %}];
 
         new Chart(chartCanvas, {
-            type: 'bar',
+            type: 'barH',  // Horizontal bar chart
             data: {
                 labels: names,
                 datasets: [
@@ -228,9 +238,10 @@
                 ]
             },
             options: {
+                indexAxis: 'y',  // Make it horizontal
                 responsive: true,
                 scales: {
-                    y: {
+                    x: {
                         beginAtZero: true,
                         max: 100,
                         ticks: {
@@ -256,6 +267,32 @@
         link.select();
         document.execCommand('copy');
         alert('Link copiado! 📋');
+    }
+
+    // Sair da leitura coletiva
+    function leaveCollective() {
+        if (!confirm('Tem certeza que deseja sair desta leitura coletiva?')) {
+            return;
+        }
+
+        const collectiveId = '{{ collective.id }}';
+        
+        fetch(`/collective/${collectiveId}/leave`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Você saiu da leitura coletiva! 👋');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => alert('Erro ao sair: ' + err));
     }
 </script>
 
@@ -299,6 +336,13 @@
         display: flex;
         gap: 1rem;
         min-width: 200px;
+    }
+
+    .participant-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        flex-wrap: wrap;
     }
 
     .badge {

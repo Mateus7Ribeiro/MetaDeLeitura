@@ -13,11 +13,28 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     reading_speed = db.Column(db.Float, default=2.5)  # minutos por página
+    user_hash = db.Column(db.String(12), unique=True, nullable=False)  # Hash curta para perfil público
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamento com livros
     books = db.relationship('Book', backref='owner', lazy=True, cascade='all, delete-orphan')
+    
+    # Relacionamento com seguidores
+    followers = db.relationship(
+        'UserFollower',
+        foreign_keys='UserFollower.following_id',
+        backref='following_user',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+    following = db.relationship(
+        'UserFollower',
+        foreign_keys='UserFollower.follower_id',
+        backref='follower_user',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -30,6 +47,14 @@ class User(db.Model):
         """Verifica se a senha está correta"""
         return check_password_hash(self.password_hash, password)
     
+    def generate_user_hash(self):
+        """Gera uma hash única curta para o usuário"""
+        import hashlib
+        import secrets
+        # Usar combinação de username + random para garantir unicidade
+        data = f"{self.username}_{secrets.token_hex(4)}"
+        return hashlib.md5(data.encode()).hexdigest()[:12]
+    
     def to_dict(self):
         """Converte para dicionário"""
         return {
@@ -37,6 +62,7 @@ class User(db.Model):
             'username': self.username,
             'email': self.email,
             'reading_speed': self.reading_speed,
+            'user_hash': self.user_hash,
             'created_at': self.created_at.strftime('%d/%m/%Y %H:%M:%S'),
         }
 
@@ -272,3 +298,20 @@ class CollectiveReadingParticipant(db.Model):
             return 'adiantado'
         return 'atrasado'
 
+
+class UserFollower(db.Model):
+    """Relação de seguimento entre usuários"""
+    __tablename__ = 'user_followers'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Quem segue
+    following_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Quem está sendo seguido
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('follower_id', 'following_id', name='unique_follow'),
+        db.CheckConstraint('follower_id != following_id', name='cannot_follow_self'),
+    )
+    
+    def __repr__(self):
+        return f'<UserFollower {self.follower_id} -> {self.following_id}>'

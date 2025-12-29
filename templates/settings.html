@@ -35,6 +35,13 @@
             <label>Membro desde:</label>
             <p class="info-value">{{ user.created_at.strftime('%d/%m/%Y') }}</p>
         </div>
+        <div class="info-group">
+            <label>Link do Perfil:</label>
+            <div class="profile-link-group">
+                <input type="text" value="{{ url_for('main.view_profile', user_hash=user.user_hash, _external=True) }}" id="profileLink" class="profile-link" readonly>
+                <button type="button" class="btn btn-sm btn-primary" onclick="copyProfileLink()">📋 Copiar</button>
+            </div>
+        </div>
     </div>
     
     <div class="settings-card">
@@ -168,5 +175,29 @@
     .btn-block {
         width: 100%;
     }
+
+    .profile-link-group {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .profile-link {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-family: 'Courier New', monospace;
+    }
 </style>
+
+<script>
+    function copyProfileLink() {
+        const link = document.getElementById('profileLink');
+        link.select();
+        document.execCommand('copy');
+        alert('Link copiado! 📋');
+    }
+</script>
 {% endblock %}

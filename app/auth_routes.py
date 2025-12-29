@@ -35,6 +35,7 @@ def register():
         # Criar novo usuário
         user = User(username=username, email=email)
         user.set_password(password)
+        user.user_hash = user.generate_user_hash()
         
         db.session.add(user)
         db.session.commit()

@@ -72,6 +72,46 @@
             {% endif %}
         </div>
     {% endif %}
+
+    <!-- Livros das Leituras Coletivas -->
+    {% if collective_books %}
+        <div class="section-divider">
+            <h2>📚 Livros de Leituras Coletivas</h2>
+        </div>
+        <div class="books-grid">
+            {% for book in collective_books %}
+                <div class="book-card collective-badge">
+                    <div class="collective-label">
+                        👥 {{ book.collective_reading.name }}
+                    </div>
+                    <div class="book-header">
+                        <h3>{{ book.title }}</h3>
+                    </div>
+
+                    <div class="book-info">
+                        <div class="info-row">
+                            <span class="label">Total de Páginas:</span>
+                            <span class="value">{{ book.total_pages }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Período:</span>
+                            <span class="value">{{ book.start_date.strftime('%d/%m') }} - {{ book.end_date.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%; background: #10b981;"></div>
+                    </div>
+
+                    <div class="book-actions">
+                        <a href="{{ url_for('main.view_collective', collective_id=book.collective_reading.id, hash=book.collective_reading.share_hash) }}" class="btn btn-secondary">
+                            👁️ Ver Leitura
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 </div>
 
 <style>
@@ -112,6 +152,33 @@
 .badge-completed {
     background-color: #d1ecf1;
     color: #0c5460;
+}
+
+.section-divider {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e7eb;
+}
+
+.section-divider h2 {
+    margin: 0 0 1.5rem 0;
+    color: #667eea;
+}
+
+.collective-badge {
+    position: relative;
+    border: 2px solid #667eea;
+    background: linear-gradient(to bottom right, rgba(102, 126, 234, 0.02), transparent);
+}
+
+.collective-label {
+    background: #667eea;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px 4px 0 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: -1rem -1rem 0.5rem -1rem;
 }
 
 .books-grid {

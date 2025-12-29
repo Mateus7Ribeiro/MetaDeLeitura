@@ -13,10 +13,54 @@
         <button class="tab-button active" data-tab="created">
             🎯 Minhas Leituras ({{ created|length }})
         </button>
-        <button class="tab-button" data-tab="participating">
+        <button class="tab-button " data-tab="participating">
             👥 Participando ({{ participations|length }})
         </button>
     </div>
+
+
+    <!-- Leituras participando -->
+    <div id="participating" class="tab-content">
+        {% if participations %}
+            <div class="collectives-grid">
+                {% for collective in participations %}
+                    <div class="collective-card">
+                        <div class="card-header">
+                            <h3>{{ collective.name }}</h3>
+                            <span class="badge badge-participant">Participante</span>
+                        </div>
+                        
+                        <p class="description">{{ collective.description|truncate(100) }}</p>
+                        
+                        <div class="info-row">
+                            <span>👤 Criador:</span>
+                            <strong>{{ collective.creator.username }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>📚 Livros:</span>
+                            <strong>{{ collective.books|length }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>👥 Participantes:</span>
+                            <strong>{{ collective.participants|length }}</strong>
+                        </div>
+                        
+                        <div class="card-actions">
+                            <a href="{{ url_for('main.view_collective', collective_id=collective.id) }}" class="btn btn-secondary">👁️ Ver</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Você ainda não está participando de nenhuma leitura coletiva.</p>
+                <p>Peça o link de uma leitura coletiva para participar!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
 
     <!-- Leituras criadas -->
     <div id="created" class="tab-content active">
@@ -62,48 +106,6 @@
         {% endif %}
     </div>
 
-    <!-- Leituras participando -->
-    <div id="participating" class="tab-content">
-        {% if participations %}
-            <div class="collectives-grid">
-                {% for collective in participations %}
-                    <div class="collective-card">
-                        <div class="card-header">
-                            <h3>{{ collective.name }}</h3>
-                            <span class="badge badge-participant">Participante</span>
-                        </div>
-                        
-                        <p class="description">{{ collective.description|truncate(100) }}</p>
-                        
-                        <div class="info-row">
-                            <span>👤 Criador:</span>
-                            <strong>{{ collective.creator.username }}</strong>
-                        </div>
-                        
-                        <div class="info-row">
-                            <span>📚 Livros:</span>
-                            <strong>{{ collective.books|length }}</strong>
-                        </div>
-                        
-                        <div class="info-row">
-                            <span>👥 Participantes:</span>
-                            <strong>{{ collective.participants|length }}</strong>
-                        </div>
-                        
-                        <div class="card-actions">
-                            <a href="{{ url_for('main.view_collective', collective_id=collective.id) }}" class="btn btn-secondary">👁️ Ver</a>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <p>Você ainda não está participando de nenhuma leitura coletiva.</p>
-                <p>Peça o link de uma leitura coletiva para participar!</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
 
 <script>
     // Tab switching

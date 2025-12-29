@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }} - Perfil{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-info">
+            <h1>{{ profile_user.username }}</h1>
+            <p class="profile-email">{{ profile_user.email }}</p>
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-number">{{ profile_user.books|length }}</span>
+                    <span class="stat-label">Livros</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{{ followers_count }}</span>
+                    <span class="stat-label">Seguidores</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{{ following_count }}</span>
+                    <span class="stat-label">Seguindo</span>
+                </div>
+            </div>
+        </div>
+        
+        {% if user and user.id != profile_user.id %}
+            <div class="profile-actions">
+                {% if is_following %}
+                    <button type="button" class="btn btn-secondary" onclick="unfollowUser({{ profile_user.id }})">👤 Deixar de Seguir</button>
+                {% else %}
+                    <button type="button" class="btn btn-primary" onclick="followUser({{ profile_user.id }})">👤 Seguir</button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Livros do Usuário -->
+    <div class="section">
+        <h2>📚 Livros</h2>
+        {% if books %}
+            <div class="books-list">
+                {% for book in books %}
+                    <div class="book-item">
+                        {% if book.cover_url %}
+                            <img src="{{ book.cover_url }}" alt="{{ book.name }}" class="book-thumbnail">
+                        {% else %}
+                            <div class="book-placeholder">📖</div>
+                        {% endif %}
+                        <div class="book-details">
+                            <h3>{{ book.name }}</h3>
+                            <p class="book-progress">{{ book.current_page }} / {{ book.total_pages }} páginas</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ (book.current_page / book.total_pages * 100)|int }}%"></div>
+                            </div>
+                            <p class="book-target">Alvo: {{ book.target_date.strftime('%d/%m/%Y') }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">{{ profile_user.username }} ainda não adicionou livros</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 2rem;
+    }
+
+    .profile-info h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+    }
+
+    .profile-email {
+        margin: 0 0 1rem 0;
+        opacity: 0.9;
+    }
+
+    .profile-stats {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .profile-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .books-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .book-item {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .book-thumbnail {
+        width: 100px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .book-placeholder {
+        width: 100px;
+        height: 150px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        border-radius: 4px;
+    }
+
+    .book-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .book-details h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+    }
+
+    .book-progress {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: #667eea;
+        transition: width 0.3s ease;
+    }
+
+    .book-target {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #9ca3af;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #9ca3af;
+        padding: 2rem;
+    }
+
+    .section {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 2rem;
+    }
+
+    .section h2 {
+        margin-top: 0;
+    }
+
+    @media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+        }
+
+        .profile-stats {
+            justify-content: space-around;
+            gap: 1rem;
+        }
+
+        .books-list {
+            grid-template-columns: 1fr;
+        }
+
+        .book-item {
+            flex-direction: column;
+        }
+
+        .book-thumbnail,
+        .book-placeholder {
+            width: 100%;
+            height: auto;
+            min-height: 200px;
+        }
+    }
+</style>
+
+<script>
+    function followUser(userId) {
+        fetch(`/user/${userId}/follow`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => alert('Erro: ' + err));
+    }
+
+    function unfollowUser(userId) {
+        if (!confirm('Tem certeza?')) return;
+        
+        fetch(`/user/${userId}/unfollow`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => alert('Erro: ' + err));
+    }
+</script>
+{% endblock %}
