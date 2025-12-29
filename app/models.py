@@ -174,8 +174,10 @@ class CollectiveReading(db.Model):
         return f'<CollectiveReading {self.name}>'
     
     def generate_share_hash(self):
-        """Gera um hash único para compartilhamento"""
-        unique_str = f"{self.id}_{self.creator_id}_{datetime.utcnow().isoformat()}_{uuid.uuid4()}"
+        """Gera um hash único para compartilhamento (uma única vez)"""
+        # Hash baseado em: criador + nome (garante consistência sem UUID)
+        # Usa dados que não mudam após criação
+        unique_str = f"{self.creator_id}_{self.name}"
         self.share_hash = hashlib.sha256(unique_str.encode()).hexdigest()[:32]
     
     def get_total_pages(self):
