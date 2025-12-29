@@ -234,15 +234,32 @@ def create_collective():
         try:
             name = request.form.get('name')
             description = request.form.get('description', '')
+            start_date_str = request.form.get('start_date')
+            end_date_str = request.form.get('end_date')
             
             if not name:
                 return render_template('collective_create.html', error='Nome é obrigatório'), 400
+            
+            if not start_date_str or not end_date_str:
+                return render_template('collective_create.html', error='Datas de início e término são obrigatórias'), 400
+            
+            # Converter datas
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            except ValueError:
+                return render_template('collective_create.html', error='Formato de data inválido'), 400
+            
+            if start_date >= end_date:
+                return render_template('collective_create.html', error='Data de início deve ser antes da data de término'), 400
             
             # Criar leitura coletiva
             collective = CollectiveReading(
                 creator_id=user.id,
                 name=name,
-                description=description
+                description=description,
+                start_date=start_date,
+                end_date=end_date
             )
             collective.generate_share_hash()
             
