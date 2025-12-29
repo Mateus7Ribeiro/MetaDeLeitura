@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from app import db
-from app.models import Book, User
+from app.models import Book, User, CollectiveReading, CollectiveReadingBook, CollectiveReadingParticipant
 from app.auth import login_required, get_current_user
 from datetime import datetime
 import json
+
 
 main_bp = Blueprint('main', __name__)
 
@@ -27,6 +28,7 @@ def add_book():
             total_pages = int(request.form.get('total_pages'))
             current_page = int(request.form.get('current_page', 0))
             target_date_str = request.form.get('target_date')
+            cover_url = request.form.get('cover_url', '')
             
             # Validação
             if not name or total_pages <= 0:
@@ -47,7 +49,8 @@ def add_book():
                 name=name,
                 total_pages=total_pages,
                 current_page=current_page,
-                target_date=target_date
+                target_date=target_date,
+                cover_url=cover_url if cover_url else None
             )
             book.update_progress(current_page=current_page)
             
@@ -91,6 +94,8 @@ def edit_book(book_id):
             current_page = int(request.form.get('current_page', book.current_page))
             target_date_str = request.form.get('target_date')
             book.is_public = request.form.get('is_public') == 'true'
+            cover_url = request.form.get('cover_url', '')
+            book.cover_url = cover_url if cover_url else None
             
             if book.total_pages <= 0:
                 return render_template('edit_book.html', book=book, error='Total de páginas deve ser maior que 0'), 400
@@ -201,3 +206,195 @@ def view_public_book(book_id):
         return render_template('error.html', message='Este livro é privado'), 403
     
     return render_template('book_public.html', book=book, current_user=current_user, is_owner=(book.user_id == current_user.id))
+# ===== ROTAS DE LEITURAS COLETIVAS =====
+
+@main_bp.route('/collective')
+@login_required
+def list_collective():
+    """Lista leituras coletivas (criadas e participando)"""
+    user = get_current_user()
+    
+    # Leituras que criou
+    created = CollectiveReading.query.filter_by(creator_id=user.id).order_by(CollectiveReading.created_at.desc()).all()
+    
+    # Leituras que participa
+    participations = db.session.query(CollectiveReading).join(CollectiveReadingParticipant).filter(
+        CollectiveReadingParticipant.user_id == user.id
+    ).order_by(CollectiveReading.created_at.desc()).all()
+    
+    return render_template('collective_list.html', created=created, participations=participations, user=user)
+
+@main_bp.route('/collective/create', methods=['GET', 'POST'])
+@login_required
+def create_collective():
+    """Criar nova leitura coletiva"""
+    user = get_current_user()
+    
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name')
+            description = request.form.get('description', '')
+            
+            if not name:
+                return render_template('collective_create.html', error='Nome é obrigatório'), 400
+            
+            # Criar leitura coletiva
+            collective = CollectiveReading(
+                creator_id=user.id,
+                name=name,
+                description=description
+            )
+            collective.generate_share_hash()
+            
+            db.session.add(collective)
+            db.session.commit()
+            
+            return redirect(url_for('main.edit_collective', collective_id=collective.id))
+        except Exception as e:
+            return render_template('collective_create.html', error=str(e)), 400
+    
+    return render_template('collective_create.html', user=user)
+
+@main_bp.route('/collective/<int:collective_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_collective(collective_id):
+    """Editar leitura coletiva (adicionar/remover livros)"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Verificar se é o criador
+    if collective.creator_id != user.id:
+        return render_template('error.html', message='Acesso negado'), 403
+    
+    if request.method == 'POST':
+        try:
+            action = request.form.get('action')
+            
+            if action == 'update_dates':
+                collective.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
+                collective.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
+                db.session.commit()
+                return redirect(url_for('main.edit_collective', collective_id=collective.id))
+            
+            elif action == 'add_book':
+                title = request.form.get('title')
+                total_pages = int(request.form.get('total_pages'))
+                start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
+                end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
+                cover_url = request.form.get('cover_url', '')
+                
+                # Validar sequência de livros
+                order = len(collective.books) + 1
+                
+                # Verificar sobreposição de datas
+                for book in collective.books:
+                    if not (end_date < book.start_date or start_date > book.end_date):
+                        return render_template('collective_edit.html', collective=collective, 
+                                             error='Datas dos livros não podem se sobrepor'), 400
+                
+                new_book = CollectiveReadingBook(
+                    collective_reading_id=collective.id,
+                    title=title,
+                    total_pages=total_pages,
+                    order=order,
+                    start_date=start_date,
+                    end_date=end_date,
+                    cover_url=cover_url
+                )
+                
+                db.session.add(new_book)
+                db.session.commit()
+                return redirect(url_for('main.edit_collective', collective_id=collective.id))
+            
+            elif action == 'remove_book':
+                book_id = int(request.form.get('book_id'))
+                book = CollectiveReadingBook.query.get_or_404(book_id)
+                if book.collective_reading_id != collective.id:
+                    return render_template('error.html', message='Acesso negado'), 403
+                
+                db.session.delete(book)
+                db.session.commit()
+                return redirect(url_for('main.edit_collective', collective_id=collective.id))
+        
+        except Exception as e:
+            return render_template('collective_edit.html', collective=collective, error=str(e)), 400
+    
+    return render_template('collective_edit.html', collective=collective, user=user)
+
+@main_bp.route('/collective/<int:collective_id>')
+def view_collective(collective_id):
+    """Visualizar leitura coletiva (público ou privado com link)"""
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    user = get_current_user() if session.get('user_id') else None
+    
+    # Se não é o criador, precisa estar na URL com hash
+    if user is None or user.id != collective.creator_id:
+        # Verificar se veio por hash
+        share_hash = request.args.get('hash')
+        if share_hash != collective.share_hash:
+            return render_template('error.html', message='Link inválido'), 404
+    
+    return render_template('collective_view.html', collective=collective, user=user)
+
+@main_bp.route('/collective/<int:collective_id>/join')
+@login_required
+def join_collective(collective_id):
+    """Aderir a uma leitura coletiva"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Verificar se já está participando
+    existing = CollectiveReadingParticipant.query.filter_by(
+        collective_reading_id=collective.id,
+        user_id=user.id
+    ).first()
+    
+    if existing:
+        return redirect(url_for('main.view_collective', collective_id=collective.id))
+    
+    # Adicionar como participante
+    participant = CollectiveReadingParticipant(
+        collective_reading_id=collective.id,
+        user_id=user.id
+    )
+    db.session.add(participant)
+    db.session.commit()
+    
+    return redirect(url_for('main.view_collective', collective_id=collective.id))
+
+@main_bp.route('/collective/<int:collective_id>/update-progress', methods=['POST'])
+@login_required
+def update_collective_progress(collective_id):
+    """Atualizar progresso na leitura coletiva"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Verificar se está participando
+    participant = CollectiveReadingParticipant.query.filter_by(
+        collective_reading_id=collective.id,
+        user_id=user.id
+    ).first_or_404()
+    
+    try:
+        data = request.get_json()
+        participant.current_percentage = float(data.get('percentage', 0))
+        participant.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({'success': True, 'percentage': participant.current_percentage}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@main_bp.route('/collective/share/<share_hash>')
+def join_collective_by_hash(share_hash):
+    """Entrar em leitura coletiva via link compartilhável"""
+    collective = CollectiveReading.query.filter_by(share_hash=share_hash).first_or_404()
+    
+    user = get_current_user() if session.get('user_id') else None
+    
+    if user:
+        # Se logado, redirecionar para join
+        return redirect(url_for('main.join_collective', collective_id=collective.id))
+    else:
+        # Se não logado, mostrar página com opção de login/registro
+        return render_template('collective_view.html', collective=collective, user=None, share_hash=share_hash)

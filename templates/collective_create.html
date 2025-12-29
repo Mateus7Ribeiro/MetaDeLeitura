@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Leitura Coletiva - Meta de Leitura{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="page-header">
+        <h2>📚 Criar Nova Leitura Coletiva</h2>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>Erro:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <div class="form-box">
+        <form method="POST" class="form">
+            <div class="form-group">
+                <label for="name">Nome da Leitura Coletiva *</label>
+                <input type="text" id="name" name="name" required placeholder="Ex: Saga de Harry Potter">
+                <small>Um nome descritivo para sua leitura em grupo</small>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Descrição (Opcional)</label>
+                <textarea id="description" name="description" rows="4" placeholder="Descreva os livros, objetivos, etc..."></textarea>
+                <small>Informações sobre a leitura coletiva</small>
+            </div>
+
+            <div class="form-group info-box">
+                <p>
+                    <strong>💡 Próximos Passos:</strong><br>
+                    1. Clique em "Criar"<br>
+                    2. Na página de edição, você adicionará os livros em sequência<br>
+                    3. Defina as datas de início e fim<br>
+                    4. Compartilhe o link com seus amigos!
+                </p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">✅ Criar Leitura</button>
+                <a href="{{ url_for('main.list_collective') }}" class="btn btn-secondary">❌ Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .page-header h2 {
+        margin: 0;
+    }
+
+    .form-box {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #999;
+        font-size: 0.9rem;
+    }
+
+    .info-box {
+        background: #f0f7ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 1rem;
+    }
+
+    .info-box p {
+        margin: 0;
+        color: #333;
+        line-height: 1.6;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .form-actions .btn {
+        flex: 1;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-danger {
+        background-color: #fee2e2;
+        color: #7f1d1d;
+        border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 768px) {
+        .form-box {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

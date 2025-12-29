@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collective.name }} - Leitura Coletiva{% endblock %}
+
+{% block content %}
+<div class="view-container">
+    <div class="header-section">
+        <div class="header-content">
+            <h1>📚 {{ collective.name }}</h1>
+            <p class="description">{{ collective.description }}</p>
+            <div class="header-meta">
+                <span>👤 Criador: <strong>{{ collective.creator.username }}</strong></span>
+                <span>📅 {{ collective.start_date.strftime('%d/%m/%Y') }} - {{ collective.end_date.strftime('%d/%m/%Y') }}</span>
+                <span>📚 {{ collective.books|length }} livro(s)</span>
+                <span>👥 {{ collective.participants|length }} participante(s)</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% if user and user.id == collective.creator_id %}
+                <a href="{{ url_for('main.edit_collective', collective_id=collective.id) }}" class="btn btn-primary">✏️ Editar</a>
+            {% elif user %}
+                {% if user in [p.user for p in collective.participants] %}
+                    <span class="badge badge-success">✅ Você está participando</span>
+                {% else %}
+                    <a href="{{ url_for('main.join_collective', collective_id=collective.id) }}" class="btn btn-primary">👥 Aderir</a>
+                {% endif %}
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">🔐 Login para Participar</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Seção de Livros -->
+    <div class="section">
+        <h2>📖 Livros em Sequência</h2>
+        <div class="books-carousel">
+            {% for book in collective.books|sort(attribute='order') %}
+                <div class="book-card">
+                    {% if book.cover_url %}
+                        <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="book-cover">
+                    {% else %}
+                        <div class="book-placeholder">📖</div>
+                    {% endif %}
+                    
+                    <div class="book-info">
+                        <h4>{{ book.order }}. {{ book.title }}</h4>
+                        <p class="book-pages">{{ book.total_pages }} páginas</p>
+                        <p class="book-dates">{{ book.start_date.strftime('%d/%m') }} - {{ book.end_date.strftime('%d/%m/%Y') }}</p>
+                        
+                        {% set days_total = (book.end_date - book.start_date).days %}
+                        {% set pages_per_day = book.total_pages / max(days_total, 1) %}
+                        <p class="book-pace">{{ "%.1f"|format(pages_per_day) }} pág/dia</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Informações de Meta -->
+    <div class="section">
+        <h2>🎯 Meta Geral</h2>
+        <div class="meta-info">
+            <div class="meta-item">
+                <span class="label">Total de Páginas:</span>
+                <span class="value">{{ collective.get_total_pages() }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="label">Páginas por Dia:</span>
+                <span class="value">{{ "%.1f"|format(collective.get_pages_per_day()) }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="label">Progresso Ideal Agora:</span>
+                <span class="value">{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progresso dos Participantes -->
+    <div class="section">
+        <h2>👥 Progresso dos Participantes</h2>
+        
+        {% if collective.participants %}
+            <div class="participants-grid">
+                {% for participant in collective.participants %}
+                    {% set ideal = collective.get_ideal_progress_percentage() %}
+                    {% set current = participant.current_percentage %}
+                    {% set status = participant.get_status(collective) %}
+                    
+                    <div class="participant-card">
+                        <div class="participant-header">
+                            <h4>{{ participant.user.username }}</h4>
+                            <span class="badge badge-{{ status }}">
+                                {% if status == 'adiantado' %}
+                                    🚀 Adiantado
+                                {% elif status == 'em_dia' %}
+                                    ✅ Em Dia
+                                {% else %}
+                                    ⏰ Atrasado
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="progress-section">
+                            <div class="progress-label">
+                                <span>Seu Progresso</span>
+                                <span class="percentage">{{ "%.1f"|format(current) }}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ current }}%"></div>
+                            </div>
+                            
+                            <div class="progress-label ideal" style="margin-top: 0.5rem;">
+                                <span>Ideal (Em Dia)</span>
+                                <span class="percentage">{{ "%.1f"|format(ideal) }}%</span>
+                            </div>
+                            <div class="progress-bar ideal">
+                                <div class="progress-fill ideal" style="width: {{ ideal }}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="participant-details">
+                            <p>Aderiu em: {{ participant.joined_at.strftime('%d/%m/%Y') }}</p>
+                            <p>Última atualização: {{ participant.updated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        </div>
+
+                        {% if user and user.id == participant.user_id %}
+                            <div class="update-progress">
+                                <input type="range" min="0" max="100" step="0.1" 
+                                       value="{{ current }}" class="progress-slider"
+                                       data-participant-id="{{ participant.id }}"
+                                       data-collective-id="{{ collective.id }}">
+                                <small class="slider-value">{{ "%.1f"|format(current) }}%</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Gráfico de Comparação -->
+            <div class="chart-section">
+                <h3>📊 Comparativo de Progresso</h3>
+                <canvas id="progressChart"></canvas>
+            </div>
+        {% else %}
+            <p class="empty-message">Nenhum participante ainda.</p>
+        {% endif %}
+    </div>
+
+    <!-- Link de Compartilhamento -->
+    <div class="section share-section">
+        <h2>🔗 Compartilhar</h2>
+        <div class="share-box">
+            <input type="text" id="shareLink" readonly 
+                   value="{{ url_for('main.join_collective_by_hash', share_hash=collective.share_hash, _external=True) }}" 
+                   class="share-input">
+            <button onclick="copyShareLink()" class="btn btn-success">📋 Copiar Link</button>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Atualizar progresso com slider
+    document.querySelectorAll('.progress-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            e.target.nextElementSibling.textContent = parseFloat(value).toFixed(1) + '%';
+        });
+
+        slider.addEventListener('change', (e) => {
+            const percentage = parseFloat(e.target.value);
+            const participantId = e.target.dataset.participantId;
+            const collectiveId = e.target.dataset.collectiveId;
+
+            fetch(`/collective/${collectiveId}/update-progress`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    percentage: percentage
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Progresso atualizado com sucesso! 🎉');
+                }
+            })
+            .catch(err => alert('Erro ao atualizar: ' + err));
+        });
+    });
+
+    // Gráfico de comparação
+    const chartCanvas = document.getElementById('progressChart');
+    if (chartCanvas) {
+        const participants = {{ collective.participants|length }};
+        const names = [{% for p in collective.participants %}'{{ p.user.username }}'{{ "," if not loop.last else "" }}{% endfor %}];
+        const current = [{% for p in collective.participants %}{{ "%.1f"|format(p.current_percentage) }}{{ "," if not loop.last else "" }}{% endfor %}];
+        const ideal = [{% for p in collective.participants %}{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}{{ "," if not loop.last else "" }}{% endfor %}];
+
+        new Chart(chartCanvas, {
+            type: 'bar',
+            data: {
+                labels: names,
+                datasets: [
+                    {
+                        label: 'Seu Progresso',
+                        data: current,
+                        backgroundColor: '#667eea',
+                        borderColor: '#5568d3',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Ideal (Em Dia)',
+                        data: ideal,
+                        backgroundColor: '#10b981',
+                        borderColor: '#059669',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+
+    // Copiar link
+    function copyShareLink() {
+        const link = document.getElementById('shareLink');
+        link.select();
+        document.execCommand('copy');
+        alert('Link copiado! 📋');
+    }
+</script>
+
+<style>
+    .view-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+    }
+
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        gap: 2rem;
+    }
+
+    .header-content h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2.5rem;
+    }
+
+    .description {
+        margin: 0.5rem 0 1rem 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .header-meta {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        font-size: 0.95rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        min-width: 200px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .badge-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .badge-adiantado {
+        background: #fbbf24;
+        color: #78350f;
+    }
+
+    .badge-em_dia {
+        background: #10b981;
+        color: white;
+    }
+
+    .badge-atrasado {
+        background: #ef4444;
+        color: white;
+    }
+
+    .section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .section h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 1rem;
+    }
+
+    .books-carousel {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .book-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+
+    .book-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .book-cover {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+
+    .book-placeholder {
+        width: 100%;
+        height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .book-info {
+        padding: 1rem;
+    }
+
+    .book-info h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.95rem;
+    }
+
+    .book-pages,
+    .book-dates,
+    .book-pace {
+        margin: 0.25rem 0;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .meta-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .meta-item {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+    }
+
+    .meta-item .label {
+        display: block;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .meta-item .value {
+        display: block;
+        font-size: 1.5rem;
+        color: #333;
+        font-weight: 700;
+    }
+
+    .participants-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .participant-card {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .participant-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .participant-header h4 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+    .progress-section {
+        margin: 1rem 0;
+    }
+
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .progress-label.ideal {
+        color: #10b981;
+    }
+
+    .percentage {
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 10px;
+        background: #e2e8f0;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar.ideal .progress-fill.ideal {
+        background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .participant-details {
+        margin: 1rem 0;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .participant-details p {
+        margin: 0.25rem 0;
+    }
+
+    .update-progress {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #ddd;
+    }
+
+    .progress-slider {
+        width: 100%;
+        cursor: pointer;
+    }
+
+    .slider-value {
+        display: block;
+        text-align: center;
+        margin-top: 0.5rem;
+        font-weight: 600;
+    }
+
+    .chart-section {
+        margin-top: 2rem;
+    }
+
+    .chart-section h3 {
+        margin-bottom: 1rem;
+    }
+
+    .share-section {
+        text-align: center;
+    }
+
+    .share-box {
+        display: flex;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+
+    .share-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    .empty-message {
+        text-align: center;
+        color: #999;
+        padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .header-section {
+            flex-direction: column;
+        }
+
+        .header-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .participants-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .share-box {
+            flex-direction: column;
+        }
+
+        .header-content h1 {
+            font-size: 1.8rem;
+        }
+    }
+</style>
+{% endblock %}

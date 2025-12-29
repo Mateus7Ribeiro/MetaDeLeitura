@@ -45,6 +45,12 @@
             <input type="date" id="target_date" name="target_date" value="{{ book.target_date.strftime('%Y-%m-%d') }}" required>
         </div>
 
+        <div class="form-group">
+            <label for="cover_url">URL da Capa do Livro (Opcional)</label>
+            <input type="url" id="cover_url" name="cover_url" value="{{ book.cover_url or '' }}" placeholder="https://exemplo.com/livro.jpg">
+            <small>Cole o link direto da imagem da capa</small>
+        </div>
+
         <div class="form-group checkbox-group">
             <label for="is_public">
                 <input type="checkbox" id="is_public" name="is_public" value="true" {% if book.is_public %}checked{% endif %}>

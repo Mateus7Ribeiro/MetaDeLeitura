@@ -15,6 +15,12 @@
 {% endif %}
 
 <div class="book-detail-container">
+    {% if book.cover_url %}
+    <div class="book-cover-section">
+        <img src="{{ book.cover_url }}" alt="Capa do livro: {{ book.name }}" class="book-cover" onerror="this.style.display='none'">
+    </div>
+    {% endif %}
+    
     <div class="detail-card">
         <h3>Informações do Livro</h3>
         <table class="info-table">

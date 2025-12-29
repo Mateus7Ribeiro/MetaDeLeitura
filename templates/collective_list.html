@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Leituras Coletivas - Meta de Leitura{% endblock %}
+
+{% block content %}
+<div class="collective-container">
+    <div class="page-header">
+        <h1>👥 Leituras Coletivas</h1>
+        <a href="{{ url_for('main.create_collective') }}" class="btn btn-primary">➕ Criar Nova Leitura</a>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" data-tab="created">
+            🎯 Minhas Leituras ({{ created|length }})
+        </button>
+        <button class="tab-button" data-tab="participating">
+            👥 Participando ({{ participations|length }})
+        </button>
+    </div>
+
+    <!-- Leituras criadas -->
+    <div id="created" class="tab-content active">
+        {% if created %}
+            <div class="collectives-grid">
+                {% for collective in created %}
+                    <div class="collective-card">
+                        <div class="card-header">
+                            <h3>{{ collective.name }}</h3>
+                            <span class="badge badge-creator">Criador</span>
+                        </div>
+                        
+                        <p class="description">{{ collective.description|truncate(100) }}</p>
+                        
+                        <div class="info-row">
+                            <span>📚 Livros:</span>
+                            <strong>{{ collective.books|length }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>👥 Participantes:</span>
+                            <strong>{{ collective.participants|length }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>📅 Período:</span>
+                            <strong>{{ collective.start_date.strftime('%d/%m') }} - {{ collective.end_date.strftime('%d/%m/%Y') }}</strong>
+                        </div>
+                        
+                        <div class="card-actions">
+                            <a href="{{ url_for('main.edit_collective', collective_id=collective.id) }}" class="btn btn-primary">✏️ Editar</a>
+                            <a href="{{ url_for('main.view_collective', collective_id=collective.id) }}" class="btn btn-secondary">👁️ Ver</a>
+                            <a href="#" onclick="copyLink('{{ url_for('main.join_collective_by_hash', share_hash=collective.share_hash, _external=True) }}')" class="btn btn-success">🔗 Compartilhar</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Você ainda não criou nenhuma leitura coletiva.</p>
+                <a href="{{ url_for('main.create_collective') }}" class="btn btn-primary">Criar Agora</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Leituras participando -->
+    <div id="participating" class="tab-content">
+        {% if participations %}
+            <div class="collectives-grid">
+                {% for collective in participations %}
+                    <div class="collective-card">
+                        <div class="card-header">
+                            <h3>{{ collective.name }}</h3>
+                            <span class="badge badge-participant">Participante</span>
+                        </div>
+                        
+                        <p class="description">{{ collective.description|truncate(100) }}</p>
+                        
+                        <div class="info-row">
+                            <span>👤 Criador:</span>
+                            <strong>{{ collective.creator.username }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>📚 Livros:</span>
+                            <strong>{{ collective.books|length }}</strong>
+                        </div>
+                        
+                        <div class="info-row">
+                            <span>👥 Participantes:</span>
+                            <strong>{{ collective.participants|length }}</strong>
+                        </div>
+                        
+                        <div class="card-actions">
+                            <a href="{{ url_for('main.view_collective', collective_id=collective.id) }}" class="btn btn-secondary">👁️ Ver</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Você ainda não está participando de nenhuma leitura coletiva.</p>
+                <p>Peça o link de uma leitura coletiva para participar!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const tab = button.dataset.tab;
+            
+            // Remove active de todos
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Adiciona active ao clicado
+            button.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        });
+    });
+    
+    // Copiar link
+    function copyLink(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Link copiado para a área de transferência!');
+        });
+    }
+</script>
+
+<style>
+    .collective-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+    }
+    
+    .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .tab-button {
+        background: none;
+        border: none;
+        padding: 1rem;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #64748b;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .tab-button:hover {
+        color: #1e293b;
+    }
+    
+    .tab-button.active {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .collectives-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .collective-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .collective-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-creator {
+        background-color: #fecaca;
+        color: #7f1d1d;
+    }
+    
+    .badge-participant {
+        background-color: #bbf7d0;
+        color: #065f46;
+    }
+    
+    .description {
+        color: #666;
+        margin: 1rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .card-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .card-actions .btn {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #999;
+    }
+    
+    .empty-state p {
+        margin: 0.5rem 0;
+    }
+    
+    .empty-state .btn {
+        margin-top: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .collectives-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}

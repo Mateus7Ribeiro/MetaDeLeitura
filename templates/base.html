@@ -8,14 +8,22 @@
 </head>
 <body>
     <header class="navbar">
-        <div class="container">
-            <h1 class="logo">📚 Meta de Leitura</h1>
-            <nav>
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <h1 class="logo">📚 Meta de Leitura</h1>
+                <button class="hamburger" id="hamburger" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+            <nav class="nav-menu" id="navMenu">
                 {% if session.get('user_id') %}
                     <span class="user-info">👤 {{ session.get('username') }}</span>
+                    <a href="{{ url_for('main.index') }}" class="nav-link">📚 Meus Livros</a>
+                    <a href="{{ url_for('main.add_book') }}" class="nav-link btn-primary">➕ Novo Livro</a>
+                    <a href="{{ url_for('main.list_collective') }}" class="nav-link">👥 Leituras Coletivas</a>
                     <a href="{{ url_for('auth.settings') }}" class="nav-link">⚙️ Configurações</a>
-                    <a href="{{ url_for('main.index') }}" class="nav-link">Meus Livros</a>
-                    <a href="{{ url_for('main.add_book') }}" class="nav-link btn-primary">+ Novo Livro</a>
                     <a href="{{ url_for('auth.logout') }}" class="nav-link btn-danger">Sair</a>
                 {% else %}
                     <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
@@ -34,5 +42,25 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Menu hamburger
+        const hamburger = document.getElementById('hamburger');
+        const navMenu = document.getElementById('navMenu');
+        
+        if (hamburger) {
+            hamburger.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+                hamburger.classList.toggle('active');
+            });
+            
+            // Fechar menu ao clicar em um link
+            document.querySelectorAll('.nav-menu a').forEach(link => {
+                link.addEventListener('click', () => {
+                    navMenu.classList.remove('active');
+                    hamburger.classList.remove('active');
+                });
+            });
+        }
+    </script>
 </body>
 </html>
