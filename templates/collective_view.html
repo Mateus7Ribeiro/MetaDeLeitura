@@ -19,7 +19,13 @@
             {% if user and user.id == collective.creator_id %}
                 <a href="{{ url_for('main.edit_collective', collective_id=collective.id) }}" class="btn btn-primary">✏️ Editar</a>
             {% elif user %}
-                {% if user in [p.user for p in collective.participants] %}
+                {% set is_participant = false %}
+                {% for participant in collective.participants %}
+                    {% if participant.user.id == user.id %}
+                        {% set is_participant = true %}
+                    {% endif %}
+                {% endfor %}
+                {% if is_participant %}
                     <span class="badge badge-success">✅ Você está participando</span>
                 {% else %}
                     <a href="{{ url_for('main.join_collective', collective_id=collective.id) }}" class="btn btn-primary">👥 Aderir</a>
@@ -84,7 +90,7 @@
                 {% for participant in collective.participants %}
                     {% set ideal = collective.get_ideal_progress_percentage() %}
                     {% set current = participant.current_percentage %}
-                    {% set status = participant.get_status(collective) %}
+                    {% set status = participant.get_status() %}
                     
                     <div class="participant-card">
                         <div class="participant-header">
