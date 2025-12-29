@@ -80,7 +80,7 @@
         </div>
         <div class="books-grid">
             {% for book in collective_books %}
-                <div class="book-card collective-badge">
+                <div class="book-card collective-badge" onclick="openProgressModalCollective({{ book.order }}, '{{ book.title }}', {{ book.total_pages }}, {{ book.collective_reading.id }})">
                     <div class="collective-label">
                         👥 {{ book.collective_reading.name }}
                     </div>
@@ -103,8 +103,10 @@
                         <div class="progress-fill" style="width: 100%; background: #10b981;"></div>
                     </div>
 
+                    <p class="click-hint">📝 Clique para atualizar progresso</p>
+
                     <div class="book-actions">
-                        <a href="{{ url_for('main.view_collective', collective_id=book.collective_reading.id, hash=book.collective_reading.share_hash) }}" class="btn btn-secondary">
+                        <a href="{{ url_for('main.view_collective', collective_id=book.collective_reading.id, hash=book.collective_reading.share_hash) }}" class="btn btn-secondary" onclick="event.stopPropagation();">
                             👁️ Ver Leitura
                         </a>
                     </div>
@@ -112,6 +114,39 @@
             {% endfor %}
         </div>
     {% endif %}
+
+    <!-- Modal para Atualizar Progresso na Leitura Coletiva -->
+    <div id="progressModalCollective" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📖 Atualizar Progresso</h2>
+                <span class="modal-close" onclick="closeProgressModalCollective()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-book-info">
+                    <h3 id="modalBookTitleCollective"></h3>
+                    <p id="modalBookPagesCollective"></p>
+                </div>
+                
+                <div class="modal-progress-section">
+                    <label for="progressInputCollective">Progresso da Leitura:</label>
+                    <div class="progress-input-group">
+                        <input type="range" id="progressSliderCollective" min="0" max="100" step="0.1" value="0">
+                        <input type="number" id="progressPercentCollective" min="0" max="100" step="0.1" value="0">
+                        <span class="unit">%</span>
+                    </div>
+                    
+                    <div class="progress-bar-modal">
+                        <div class="progress-fill" id="modalProgressFillCollective" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeProgressModalCollective()" class="btn btn-secondary">Cancelar</button>
+                <button onclick="saveProgressCollective()" class="btn btn-primary">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -279,5 +314,293 @@
 .empty-state a:hover {
     text-decoration: underline;
 }
+
+.click-hint {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #667eea;
+    font-style: italic;
+    display: none;
+}
+
+.book-card:hover .click-hint {
+    display: block;
+}
+
+.book-card.collective-badge {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.book-card.collective-badge:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 500px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.modal-close {
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #ef4444;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-book-info {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.modal-book-info h3 {
+    margin: 0 0 0.5rem 0;
+    color: #667eea;
+}
+
+.modal-book-info p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.modal-progress-section {
+    margin-bottom: 1.5rem;
+}
+
+.modal-progress-section label {
+    display: block;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.progress-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+#progressSliderCollective {
+    flex: 1;
+    height: 8px;
+    cursor: pointer;
+}
+
+#progressPercentCollective {
+    width: 80px;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.unit {
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.progress-bar-modal {
+    width: 100%;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-modal .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.3s ease;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    background: #f9fafb;
+    border-radius: 0 0 8px 8px;
+}
+
+.modal-footer .btn {
+    padding: 0.75rem 1.5rem;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #5568d3;
+}
+
+.btn-secondary {
+    background-color: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #4b5563;
+}
 </style>
+
+<script>
+    // Modal para atualizar progresso em livros de leituras coletivas
+    let currentCollectiveId = null;
+    let currentBookOrder = null;
+    
+    function openProgressModalCollective(bookOrder, bookTitle, totalPages, collectiveId) {
+        currentBookOrder = bookOrder;
+        currentCollectiveId = collectiveId;
+        document.getElementById('modalBookTitleCollective').textContent = bookTitle;
+        document.getElementById('modalBookPagesCollective').textContent = `${totalPages} páginas`;
+        
+        // Resetar o modal
+        document.getElementById('progressSliderCollective').value = 0;
+        document.getElementById('progressPercentCollective').value = 0;
+        document.getElementById('modalProgressFillCollective').style.width = '0%';
+        
+        document.getElementById('progressModalCollective').style.display = 'block';
+    }
+    
+    function closeProgressModalCollective() {
+        document.getElementById('progressModalCollective').style.display = 'none';
+    }
+    
+    function saveProgressCollective() {
+        const percentage = parseFloat(document.getElementById('progressPercentCollective').value);
+        
+        if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+            alert('Digite um valor entre 0 e 100');
+            return;
+        }
+        
+        fetch(`/collective/${currentCollectiveId}/update-progress`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                percentage: percentage
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Progresso atualizado com sucesso! 🎉');
+                closeProgressModalCollective();
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => alert('Erro ao atualizar: ' + err));
+    }
+    
+    // Sincronizar slider e input
+    document.addEventListener('DOMContentLoaded', function() {
+        const slider = document.getElementById('progressSliderCollective');
+        const input = document.getElementById('progressPercentCollective');
+        const fill = document.getElementById('modalProgressFillCollective');
+        
+        if (slider && input) {
+            slider.addEventListener('input', function() {
+                input.value = this.value;
+                fill.style.width = this.value + '%';
+            });
+            
+            input.addEventListener('input', function() {
+                slider.value = this.value;
+                fill.style.width = this.value + '%';
+            });
+        }
+        
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('progressModalCollective');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    });
+</script>
 {% endblock %}

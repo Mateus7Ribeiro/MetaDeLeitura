@@ -47,7 +47,7 @@
         <h2>📖 Livros em Sequência</h2>
         <div class="books-carousel">
             {% for book in collective.books|sort(attribute='order') %}
-                <div class="book-card" onclick="openProgressModal({{ book.order }}, '{{ book.title }}')">
+                <div class="book-card" onclick="openProgressModal({{ book.order }}, '{{ book.title }}', {{ book.total_pages }})">
                     {% if book.cover_url %}
                         <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="book-cover">
                     {% else %}
@@ -307,12 +307,15 @@
     // Modal para atualizar progresso
     let currentBookOrder = null;
     
-    function openProgressModal(bookOrder, bookTitle) {
+    function openProgressModal(bookOrder, bookTitle, totalPages) {
         currentBookOrder = bookOrder;
         document.getElementById('modalBookTitle').textContent = bookTitle;
-        
-        const totalPages = {{ collective.books[0].total_pages if collective.books else 0 }};
         document.getElementById('modalBookPages').textContent = `${totalPages} páginas`;
+        
+        // Resetar o modal
+        document.getElementById('progressSlider').value = 0;
+        document.getElementById('progressPercent').value = 0;
+        document.getElementById('modalProgressFill').style.width = '0%';
         
         document.getElementById('progressModal').style.display = 'block';
     }
