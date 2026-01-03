@@ -483,7 +483,7 @@ def join_collective(collective_id):
 @main_bp.route('/collective/<int:collective_id>/update-progress', methods=['POST'])
 @login_required
 def update_collective_progress(collective_id):
-    """Atualizar progresso na leitura coletiva"""
+    """Atualizar progresso na leitura coletiva (por páginas ou percentual)"""
     user = get_current_user()
     collective = CollectiveReading.query.get_or_404(collective_id)
     
@@ -494,14 +494,136 @@ def update_collective_progress(collective_id):
     ).first_or_404()
     
     try:
+        from app.models import CollectiveReadingProgress, CollectiveReadingBook
+        
         data = request.get_json()
-        participant.current_percentage = float(data.get('percentage', 0))
+        book_order = data.get('book_order')  # Qual livro está atualizando
+        pages_read = data.get('pages_read')  # Páginas lidas deste livro
+        percentage_input = data.get('percentage')  # Percentual deste livro
+        
+        if book_order is None:
+            return jsonify({'error': 'book_order é obrigatório'}), 400
+        
+        # Obter o livro
+        book = CollectiveReadingBook.query.filter_by(
+            collective_reading_id=collective.id,
+            order=book_order
+        ).first_or_404()
+        
+        # Converter percentual em páginas se necessário
+        if pages_read is None and percentage_input is not None:
+            pages_read = int((float(percentage_input) / 100) * book.total_pages)
+        elif pages_read is None:
+            return jsonify({'error': 'pages_read ou percentage é obrigatório'}), 400
+        
+        # Validar páginas
+        pages_read = min(max(int(pages_read), 0), book.total_pages)
+        
+        # Criar ou atualizar registro de progresso para este livro
+        progress = CollectiveReadingProgress.query.filter_by(
+            collective_reading_id=collective.id,
+            user_id=user.id,
+            book_order=book_order
+        ).first()
+        
+        if progress is None:
+            progress = CollectiveReadingProgress(
+                collective_reading_id=collective.id,
+                user_id=user.id,
+                book_order=book_order,
+                pages_read=pages_read
+            )
+            db.session.add(progress)
+        else:
+            progress.pages_read = pages_read
+        
+        db.session.commit()
+        
+        # Calcular novo percentual geral
+        total_pages = sum(b.total_pages for b in collective.books)
+        total_pages_read = sum(
+            p.pages_read for p in CollectiveReadingProgress.query.filter_by(
+                collective_reading_id=collective.id,
+                user_id=user.id
+            ).all()
+        )
+        new_percentage = (total_pages_read / total_pages * 100) if total_pages > 0 else 0
+        
+        # Atualizar percentual geral do participante
+        participant.current_percentage = new_percentage
         participant.updated_at = datetime.utcnow()
         db.session.commit()
         
-        return jsonify({'success': True, 'percentage': participant.current_percentage}), 200
+        return jsonify({
+            'success': True,
+            'percentage': round(new_percentage, 2),
+            'pages_read': pages_read,
+            'total_pages': book.total_pages
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+@main_bp.route('/api/collective/<int:collective_id>/progress-data', methods=['GET'])
+@login_required
+def get_collective_progress_data(collective_id):
+    """Obter dados de progresso detalhados para gráfico (todos os participantes)"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Verificar se está participando ou é creator (pode ver dados públicos)
+    if user.id != collective.creator_id:
+        participant = CollectiveReadingParticipant.query.filter_by(
+            collective_reading_id=collective.id,
+            user_id=user.id
+        ).first_or_404()
+    
+    from app.models import CollectiveReadingProgress
+    
+    # Obter todos os participantes
+    participants_data = []
+    
+    for participant in collective.participants:
+        # Para cada participante, obter progresso em cada livro
+        participant_books = []
+        total_pages = 0
+        total_pages_read = 0
+        
+        for book in sorted(collective.books, key=lambda b: b.order):
+            progress = CollectiveReadingProgress.query.filter_by(
+                collective_reading_id=collective.id,
+                user_id=participant.user_id,
+                book_order=book.order
+            ).first()
+            
+            pages_read = progress.pages_read if progress else 0
+            percentage_of_book = (pages_read / book.total_pages * 100) if book.total_pages > 0 else 0
+            
+            participant_books.append({
+                'order': book.order,
+                'title': book.title,
+                'total_pages': book.total_pages,
+                'pages_read': pages_read,
+                'percentage_of_book': round(percentage_of_book, 2)
+            })
+            
+            total_pages += book.total_pages
+            total_pages_read += pages_read
+        
+        overall_percentage = (total_pages_read / total_pages * 100) if total_pages > 0 else 0
+        
+        participants_data.append({
+            'username': participant.user.username,
+            'user_id': participant.user_id,
+            'books': participant_books,
+            'total_pages': total_pages,
+            'total_pages_read': total_pages_read,
+            'overall_percentage': round(overall_percentage, 2)
+        })
+    
+    return jsonify({
+        'success': True,
+        'participants': participants_data
+    }), 200
 
 @main_bp.route('/collective/<int:collective_id>/leave', methods=['POST'])
 @login_required

@@ -128,7 +128,7 @@
                             <div class="progress-mini">
                                 <div class="progress-fill" style="width: {{ current }}%"></div>
                             </div>
-                            <span class="progress-text">{{ "%.1f"|format(current) }}% / {{ "%.1f"|format(ideal) }}%</span>
+                            
                         </div>
                     </div>
                 {% endfor %}
@@ -161,18 +161,47 @@
             <div class="modal-book-info">
                 <h3 id="modalBookTitle"></h3>
                 <p id="modalBookPages"></p>
+                <p id="modalBookProgress" style="color: #667eea; font-weight: bold;"></p>
             </div>
             
             <div class="modal-progress-section">
-                <label for="progressInput">Progresso da Leitura:</label>
-                <div class="progress-input-group">
-                    <input type="range" id="progressSlider" min="0" max="100" step="0.1" value="0">
-                    <input type="number" id="progressPercent" min="0" max="100" step="0.1" value="0">
-                    <span class="unit">%</span>
+                <!-- Tabs para escolher entre Páginas ou Percentual -->
+                <div class="input-tabs">
+                    <button class="tab-btn active" onclick="switchTab('pages')">📄 Páginas Lidas</button>
+                    <button class="tab-btn" onclick="switchTab('percent')">📊 Percentual</button>
                 </div>
                 
-                <div class="progress-bar-modal">
-                    <div class="progress-fill" id="modalProgressFill" style="width: 0%"></div>
+                <!-- Input de Páginas -->
+                <div id="pagesTab" class="tab-content active">
+                    <label for="pagesInput">Quantas páginas você leu?</label>
+                    <div class="pages-input-group">
+                        <input type="number" id="pagesInput" min="0" value="0" placeholder="0">
+                        <span class="unit">/</span>
+                        <span id="totalPagesDisplay" class="total">100</span>
+                        <span class="unit">páginas</span>
+                    </div>
+                    <input type="range" id="pagesSlider" min="0" max="100" step="1" value="0" style="width: 100%; margin-top: 0.5rem;">
+                </div>
+                
+                <!-- Input de Percentual -->
+                <div id="percentTab" class="tab-content">
+                    <label for="percentInput">Qual é o percentual?</label>
+                    <div class="progress-input-group">
+                        <input type="range" id="progressSlider" min="0" max="100" step="0.1" value="0">
+                        <input type="number" id="progressPercent" min="0" max="100" step="0.1" value="0">
+                        <span class="unit">%</span>
+                    </div>
+                </div>
+                
+                <!-- Preview da barra de progresso -->
+                <div style="margin-top: 1.5rem;">
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">Preview:</p>
+                    <div class="progress-bar-modal">
+                        <div class="progress-fill" id="modalProgressFill" style="width: 0%"></div>
+                    </div>
+                    <p id="progressPreview" 
+                       style="font-size: 0.85rem; color: #667eea; text-align: center; margin-top: 0.5rem; font-weight: bold; cursor: pointer; user-select: none;" 
+                       title="Clique para editar diretamente">0%</p>
                 </div>
             </div>
         </div>
@@ -186,91 +215,203 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Atualizar progresso com slider
-    document.querySelectorAll('.progress-slider').forEach(slider => {
-        slider.addEventListener('input', (e) => {
-            const value = e.target.value;
-            e.target.nextElementSibling.textContent = parseFloat(value).toFixed(1) + '%';
-        });
-
-        slider.addEventListener('change', (e) => {
-            const percentage = parseFloat(e.target.value);
-            const participantId = e.target.dataset.participantId;
-            const collectiveId = e.target.dataset.collectiveId;
-
-            fetch(`/collective/${collectiveId}/update-progress`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    percentage: percentage
-                })
-            })
+    // ===== VARIÁVEIS GLOBAIS =====
+    let currentBookOrder = null;
+    let currentTotalPages = 0;
+    let currentActiveTab = 'pages';  // 'pages' ou 'percent'
+    
+    // ===== FUNÇÕES DO MODAL =====
+    function switchTab(tab) {
+        currentActiveTab = tab;
+        
+        // Atualizar visual dos botões
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Mostrar/esconder tabs
+        document.getElementById('pagesTab').classList.toggle('active', tab === 'pages');
+        document.getElementById('percentTab').classList.toggle('active', tab === 'percent');
+        
+        // Sincronizar valores
+        updateProgressDisplay();
+    }
+    
+    function openProgressModal(bookOrder, bookTitle, totalPages) {
+        currentBookOrder = bookOrder;
+        currentTotalPages = totalPages;
+        
+        document.getElementById('modalBookTitle').textContent = bookTitle;
+        document.getElementById('modalBookPages').textContent = `${totalPages} páginas`;
+        document.getElementById('totalPagesDisplay').textContent = totalPages;
+        document.getElementById('pagesInput').max = totalPages;
+        document.getElementById('pagesSlider').max = totalPages;
+        
+        // Buscar progresso anterior do livro (do usuário logado)
+        const collectiveId = '{{ collective.id }}';
+        fetch(`/api/collective/${collectiveId}/progress-data`)
             .then(r => r.json())
             .then(data => {
-                if (data.success) {
-                    alert('Progresso atualizado com sucesso! 🎉');
-                }
-            })
-            .catch(err => alert('Erro ao atualizar: ' + err));
-        });
-    });
-
-    // Gráfico de comparação (horizontal)
-    const chartCanvas = document.getElementById('progressChart');
-    if (chartCanvas) {
-        const participants = {{ collective.participants|length }};
-        const names = [{% for p in collective.participants %}'{{ p.user.username }}'{{ "," if not loop.last else "" }}{% endfor %}];
-        const current = [{% for p in collective.participants %}{{ "%.1f"|format(p.current_percentage) }}{{ "," if not loop.last else "" }}{% endfor %}];
-        const ideal = [{% for p in collective.participants %}{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}{{ "," if not loop.last else "" }}{% endfor %}];
-
-        new Chart(chartCanvas, {
-            type: 'barH',  // Horizontal bar chart
-            data: {
-                labels: names,
-                datasets: [
-                    {
-                        label: 'Seu Progresso',
-                        data: current,
-                        backgroundColor: '#667eea',
-                        borderColor: '#5568d3',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Ideal (Em Dia)',
-                        data: ideal,
-                        backgroundColor: '#10b981',
-                        borderColor: '#059669',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                indexAxis: 'y',  // Make it horizontal
-                responsive: true,
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
+                if (data.success && data.participants) {
+                    // Encontrar o participante atual (primeiro da lista é o usuário logado)
+                    // Na verdade, precisamos buscar o usuário logado
+                    // Para isso, vamos procurar por um atributo ou usar o primeiro
+                    const currentUsername = '{{ user.username if user else "" }}';
+                    const currentParticipant = data.participants.find(p => p.username === currentUsername) || data.participants[0];
+                    
+                    if (currentParticipant && currentParticipant.books) {
+                        const book = currentParticipant.books.find(b => b.order === bookOrder);
+                        if (book) {
+                            // Carregar progresso anterior
+                            const previousPages = book.pages_read || 0;
+                            const previousPercentage = book.percentage_of_book || 0;
+                            
+                            document.getElementById('pagesInput').value = previousPages;
+                            document.getElementById('pagesSlider').value = previousPages;
+                            document.getElementById('progressPercent').value = previousPercentage.toFixed(1);
+                            document.getElementById('progressSlider').value = previousPercentage.toFixed(1);
+                            document.getElementById('modalBookProgress').textContent = `Páginas lidas: ${previousPages} (${previousPercentage.toFixed(1)}%)`;
+                            
+                            updateProgressDisplay();
                         }
                     }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    }
                 }
+            })
+            .catch(err => console.log('Erro ao carregar progresso anterior:', err));
+        
+        currentActiveTab = 'pages';
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.remove('active');
+        document.getElementById('pagesTab').classList.add('active');
+        document.getElementById('percentTab').classList.remove('active');
+        
+        document.getElementById('progressModal').style.display = 'block';
+    }
+    
+    function closeProgressModal() {
+        document.getElementById('progressModal').style.display = 'none';
+    }
+    
+    function updateProgressDisplay() {
+        const fill = document.getElementById('modalProgressFill');
+        const preview = document.getElementById('progressPreview');
+        let percentage = 0;
+        
+        if (currentActiveTab === 'pages') {
+            const pages = parseFloat(document.getElementById('pagesInput').value) || 0;
+            percentage = (pages / currentTotalPages * 100);
+            document.getElementById('modalBookProgress').textContent = `Páginas lidas: ${parseInt(pages)}`;
+        } else {
+            percentage = parseFloat(document.getElementById('progressPercent').value) || 0;
+            const pages = Math.round((percentage / 100) * currentTotalPages);
+            document.getElementById('modalBookProgress').textContent = `Páginas lidas: ${pages}`;
+        }
+        
+        percentage = Math.min(Math.max(percentage, 0), 100);
+        fill.style.width = percentage + '%';
+        preview.textContent = percentage.toFixed(1) + '%';
+    }
+    
+    function makePreviewEditable() {
+        const preview = document.getElementById('progressPreview');
+        const currentValue = parseFloat(preview.textContent) || 0;
+        
+        // Criar input temporário
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.max = '100';
+        input.step = '0.1';
+        input.value = currentValue.toFixed(1);
+        input.style.cssText = 'width: 80px; text-align: center; font-size: 0.85rem; color: #667eea; font-weight: bold; border: 2px solid #667eea; border-radius: 4px; padding: 2px;';
+        
+        // Substituir o preview pelo input
+        preview.style.display = 'none';
+        preview.parentNode.insertBefore(input, preview);
+        input.focus();
+        input.select();
+        
+        // Flag para evitar conflitos
+        let isUpdating = false;
+        
+        // Ao digitar, atualizar páginas
+        input.addEventListener('input', function() {
+            if (isUpdating) return;
+            isUpdating = true;
+            
+            const percentage = parseFloat(this.value) || 0;
+            const pages = Math.round((percentage / 100) * currentTotalPages);
+            
+            // Atualizar inputs de páginas e percentual
+            document.getElementById('pagesInput').value = pages;
+            document.getElementById('pagesSlider').value = pages;
+            document.getElementById('progressPercent').value = percentage.toFixed(1);
+            document.getElementById('progressSlider').value = percentage.toFixed(1);
+            
+            // Atualizar barra
+            const fill = document.getElementById('modalProgressFill');
+            fill.style.width = Math.min(Math.max(percentage, 0), 100) + '%';
+            document.getElementById('modalBookProgress').textContent = `Páginas lidas: ${pages}`;
+            
+            setTimeout(() => isUpdating = false, 50);
+        });
+        
+        // Ao perder foco ou pressionar Enter, voltar para span
+        const finishEdit = () => {
+            const finalValue = parseFloat(input.value) || 0;
+            preview.textContent = Math.min(Math.max(finalValue, 0), 100).toFixed(1) + '%';
+            input.remove();
+            preview.style.display = 'block';
+        };
+        
+        input.addEventListener('blur', finishEdit);
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                finishEdit();
             }
         });
     }
+    
+    function saveProgress() {
+        let pagesRead = 0;
+        
+        if (currentActiveTab === 'pages') {
+            pagesRead = Math.round(parseFloat(document.getElementById('pagesInput').value) || 0);
+        } else {
+            const percentage = parseFloat(document.getElementById('progressPercent').value) || 0;
+            pagesRead = Math.round((percentage / 100) * currentTotalPages);
+        }
+        
+        if (pagesRead < 0 || pagesRead > currentTotalPages) {
+            alert('Valor de páginas inválido');
+            return;
+        }
+        
+        const collectiveId = '{{ collective.id }}';
+        
+        fetch(`/collective/${collectiveId}/update-progress`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                book_order: currentBookOrder,
+                pages_read: pagesRead
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Progresso atualizado com sucesso! 🎉');
+                closeProgressModal();
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(err => alert('Erro ao atualizar: ' + err));
+    }
 
-    // Copiar link
+    // ===== FUNÇÕES DO COMPARTILHAMENTO =====
     function copyShareLink() {
         const link = document.getElementById('shareLink');
         link.select();
@@ -278,7 +419,7 @@
         alert('Link copiado! 📋');
     }
 
-    // Sair da leitura coletiva
+    // ===== FUNÇÕES DA LEITURA COLETIVA =====
     function leaveCollective() {
         if (!confirm('Tem certeza que deseja sair desta leitura coletiva?')) {
             return;
@@ -304,73 +445,44 @@
         .catch(err => alert('Erro ao sair: ' + err));
     }
 
-    // Modal para atualizar progresso
-    let currentBookOrder = null;
-    
-    function openProgressModal(bookOrder, bookTitle, totalPages) {
-        currentBookOrder = bookOrder;
-        document.getElementById('modalBookTitle').textContent = bookTitle;
-        document.getElementById('modalBookPages').textContent = `${totalPages} páginas`;
+    // ===== INICIALIZAÇÃO DO DOM =====
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sincronizar inputs de páginas
+        const pagesInput = document.getElementById('pagesInput');
+        const pagesSlider = document.getElementById('pagesSlider');
         
-        // Resetar o modal
-        document.getElementById('progressSlider').value = 0;
-        document.getElementById('progressPercent').value = 0;
-        document.getElementById('modalProgressFill').style.width = '0%';
-        
-        document.getElementById('progressModal').style.display = 'block';
-    }
-    
-    function closeProgressModal() {
-        document.getElementById('progressModal').style.display = 'none';
-    }
-    
-    function saveProgress() {
-        const percentage = parseFloat(document.getElementById('progressPercent').value);
-        const collectiveId = '{{ collective.id }}';
-        
-        if (isNaN(percentage) || percentage < 0 || percentage > 100) {
-            alert('Digite um valor entre 0 e 100');
-            return;
+        if (pagesInput && pagesSlider) {
+            pagesInput.addEventListener('input', function() {
+                pagesSlider.value = this.value;
+                updateProgressDisplay();
+            });
+            
+            pagesSlider.addEventListener('input', function() {
+                pagesInput.value = this.value;
+                updateProgressDisplay();
+            });
         }
         
-        fetch(`/collective/${collectiveId}/update-progress`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                percentage: percentage
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert('Progresso atualizado com sucesso! 🎉');
-                closeProgressModal();
-                location.reload();
-            } else {
-                alert('Erro: ' + data.error);
-            }
-        })
-        .catch(err => alert('Erro ao atualizar: ' + err));
-    }
-    
-    // Sincronizar slider e input
-    document.addEventListener('DOMContentLoaded', function() {
+        // Sincronizar slider e input de percentual
         const slider = document.getElementById('progressSlider');
         const input = document.getElementById('progressPercent');
-        const fill = document.getElementById('modalProgressFill');
         
         if (slider && input) {
             slider.addEventListener('input', function() {
                 input.value = this.value;
-                fill.style.width = this.value + '%';
+                updateProgressDisplay();
             });
             
             input.addEventListener('input', function() {
                 slider.value = this.value;
-                fill.style.width = this.value + '%';
+                updateProgressDisplay();
             });
+        }
+        
+        // Event listener para edição do preview de percentual
+        const progressPreview = document.getElementById('progressPreview');
+        if (progressPreview) {
+            progressPreview.addEventListener('click', makePreviewEditable);
         }
         
         // Fechar modal ao clicar fora
@@ -380,6 +492,170 @@
                 modal.style.display = 'none';
             }
         }
+        
+        // ===== GRÁFICO DE BARRAS COMPOSTAS (POR LIVRO) =====
+        const chartCanvas = document.getElementById('progressChart');
+        if (chartCanvas) {
+            const collectiveId = '{{ collective.id }}';
+            
+            // Buscar dados de progresso detalhado
+            fetch(`/api/collective/${collectiveId}/progress-data`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.participants) {
+                        // Preparar dados para o gráfico
+                        const participants = data.participants;
+                        const names = participants.map(p => p.username);
+                        
+                        // Obter todos os livros únicos
+                        const booksSet = new Set();
+                        participants.forEach(p => {
+                            p.books.forEach(b => booksSet.add(b.order));
+                        });
+                        const bookOrders = Array.from(booksSet).sort();
+                        
+                        // Cores para cada livro
+                        const colors = [
+                            'rgba(102, 126, 234, 0.8)',  // Azul
+                            'rgba(16, 185, 129, 0.8)',   // Verde
+                            'rgba(245, 158, 11, 0.8)',   // Amarelo
+                            'rgba(239, 68, 68, 0.8)',    // Vermelho
+                            'rgba(139, 92, 246, 0.8)',   // Roxo
+                            'rgba(59, 130, 246, 0.8)'    // Azul claro
+                        ];
+                        
+                        const borderColors = [
+                            'rgba(102, 126, 234, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(139, 92, 246, 1)',
+                            'rgba(59, 130, 246, 1)'
+                        ];
+                        
+                        // Criar dataset para cada livro
+                        const datasets = bookOrders.map((bookOrder, index) => {
+                            // Encontrar o título do livro a partir do primeiro participante que tem esse livro
+                            let bookTitle = '';
+                            for (let p of participants) {
+                                const book = p.books.find(b => b.order === bookOrder);
+                                if (book) {
+                                    bookTitle = book.title;
+                                    break;
+                                }
+                            }
+                            
+                            return {
+                                label: `${bookOrder}. ${bookTitle}`,
+                                data: participants.map(p => {
+                                    const book = p.books.find(b => b.order === bookOrder);
+                                    return book ? (book.percentage_of_book || 0) : 0;
+                                }),
+                                backgroundColor: colors[index % colors.length],
+                                borderColor: borderColors[index % borderColors.length],
+                                borderWidth: 1
+                            };
+                        });
+                        
+                        // Adicionar linha de ideal
+                        datasets.push({
+                            label: 'Ideal (Em Dia)',
+                            data: [{% for p in collective.participants %}{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}{{ "," if not loop.last else "" }}{% endfor %}],
+                            borderColor: '#10b981',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            type: 'line',
+                            fill: false,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#10b981'
+                        });
+                        
+                        new Chart(chartCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: names,
+                                datasets: datasets
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        stacked: true,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return value + '%';
+                                            }
+                                        }
+                                    },
+                                    y: {
+                                        stacked: true
+                                    }
+                                },
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            afterLabel: function(context) {
+                                                const participantIndex = context.datasetIndex;
+                                                const datasetIndex = context.datasetIndex;
+                                                // Obter info do livro
+                                                const participant = participants[context.dataIndex];
+                                                const bookOrder = bookOrders[datasetIndex];
+                                                if (participant && bookOrder !== undefined) {
+                                                    const book = participant.books.find(b => b.order === bookOrder);
+                                                    if (book) {
+                                                        return `${book.pages_read}/${book.total_pages} páginas`;
+                                                    }
+                                                }
+                                                return '';
+                                            }
+                                        }
+                                    },
+                                    legend: {
+                                        display: true,
+                                        position: 'top'
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(err => console.log('Erro ao carregar dados do gráfico:', err));
+        }
+        
+        // ===== ATUALIZAR PROGRESSO COM SLIDER =====
+        document.querySelectorAll('.progress-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                e.target.nextElementSibling.textContent = parseFloat(value).toFixed(1) + '%';
+            });
+
+            slider.addEventListener('change', (e) => {
+                const percentage = parseFloat(e.target.value);
+                const participantId = e.target.dataset.participantId;
+                const collectiveId = e.target.dataset.collectiveId;
+
+                fetch(`/collective/${collectiveId}/update-progress`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        percentage: percentage
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Progresso atualizado com sucesso! 🎉');
+                    }
+                })
+                .catch(err => alert('Erro ao atualizar: ' + err));
+            });
+        });
     });
 </script>
 
@@ -842,6 +1118,14 @@
         transition: width 0.3s ease;
     }
 
+    #progressPreview:hover {
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 4px;
+        padding: 2px 8px;
+        transform: scale(1.05);
+        transition: all 0.2s ease;
+    }
+
     .modal-footer {
         padding: 1.5rem;
         border-top: 1px solid #e5e7eb;
@@ -949,6 +1233,72 @@
         color: #6b7280;
         font-weight: 500;
         min-width: 80px;
+        text-align: right;
+    }
+
+    /* Modal Tabs */
+    .input-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1rem;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+    }
+
+    .tab-btn:hover {
+        color: #667eea;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: slideIn 0.2s ease;
+    }
+
+    .pages-input-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    #pagesInput {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .pages-input-group .unit {
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    .pages-input-group .total {
+        font-weight: 700;
+        color: #667eea;
+        min-width: 40px;
         text-align: right;
     }
 

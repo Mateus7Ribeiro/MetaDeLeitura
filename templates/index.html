@@ -43,8 +43,9 @@
                         <span class="meta-value">{{ book.get_days_remaining() }}</span>
                     </div>
                     <div class="meta-item">
-                        <span class="meta-label">Páginas/dia:</span>
-                        <span class="meta-value">{{ "%.1f"|format(book.get_pages_per_day()) }}</span>
+                        <span class="meta-label">Meta ideal/dia:</span>
+                        <span class="meta-value">{{ "%.0f"|format(book.get_pages_per_day()) }} 
+                            <span class="meta-value-percent">| {{ "%.1f"|format(book.get_pages_per_day() / book.total_pages * 100) }}%</span></span>
                     </div>
                 </div>
                 {% endif %}
@@ -53,7 +54,7 @@
             <div class="book-actions">
                 <a href="{{ url_for('main.view_book', book_id=book.id) }}" class="btn btn-info">Detalhes</a>
                 <a href="{{ url_for('main.edit_book', book_id=book.id) }}" class="btn btn-warning">Editar</a>
-                <form method="POST" action="{{ url_for('main.delete_book', book_id=book.id) }}" style="display: inline;">
+                <form method="POST" action="{{ url_for('main.delete_book', book_id=book.id) }}" style="display: inline;" >
                     <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja deletar este livro?')">Deletar</button>
                 </form>
             </div>

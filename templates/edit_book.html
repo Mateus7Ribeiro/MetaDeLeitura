@@ -35,9 +35,14 @@
         
         <div class="progress-display">
             <span id="percentDisplay">{{ "%.2f"|format(book.current_percentage) }}%</span>
-            <div class="progress-bar" style="margin-top: 10px;">
+            <!-- <div class="progress-bar" style="margin-top: 10px;">
                 <div class="progress-fill" id="progressPreview" style="width: {{ book.current_percentage }}%"></div>
             </div>
+        -->
+        </div>
+                
+        <div class="form-group">
+            <input type="range" id="pagesSlider" min="0" max="{{ book.total_pages }}" value="{{ book.current_page }}" style="width: 100%; margin-bottom: 1rem;">
         </div>
         
         <div class="form-group">
@@ -65,22 +70,5 @@
     </form>
 </div>
 
-<script>
-    const totalPagesInput = document.getElementById('total_pages');
-    const currentPageInput = document.getElementById('current_page');
-    const percentDisplay = document.getElementById('percentDisplay');
-    const progressPreview = document.getElementById('progressPreview');
-    
-    function updateProgress() {
-        const total = parseInt(totalPagesInput.value) || 1;
-        const current = parseInt(currentPageInput.value) || 0;
-        const percent = ((current / total) * 100).toFixed(2);
-        percentDisplay.textContent = percent + '%';
-        progressPreview.style.width = percent + '%';
-        currentPageInput.max = total;
-    }
-    
-    totalPagesInput.addEventListener('change', updateProgress);
-    currentPageInput.addEventListener('input', updateProgress);
-</script>
+<script src="{{ url_for('static', filename='js/edit-book.js') }}"></script>
 {% endblock %}

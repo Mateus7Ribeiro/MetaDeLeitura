@@ -299,6 +299,56 @@ class CollectiveReadingParticipant(db.Model):
         return 'atrasado'
 
 
+class CollectiveReadingProgress(db.Model):
+    """Rastreamento detalhado de progresso por livro em leituras coletivas"""
+    __tablename__ = 'collective_reading_progress'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    collective_reading_id = db.Column(db.Integer, db.ForeignKey('collective_readings.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    book_order = db.Column(db.Integer, nullable=False)  # Ordem do livro (1, 2, 3, etc)
+    
+    # Páginas lidas deste livro específico
+    pages_read = db.Column(db.Integer, default=0, nullable=False)
+    
+    # Timestamps
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    collective = db.relationship('CollectiveReading', backref='progress_entries')
+    user = db.relationship('User', backref='collective_book_progress')
+    
+    __table_args__ = (
+        db.UniqueConstraint('collective_reading_id', 'user_id', 'book_order', 
+                           name='unique_user_book_progress'),
+    )
+    
+    def __repr__(self):
+        return f'<CollectiveReadingProgress user={self.user_id} book_order={self.book_order}>'
+    
+    def get_percentage(self, book):
+        """Retorna o percentual de leitura deste livro específico"""
+        if book.total_pages == 0:
+            return 0.0
+        return (self.pages_read / book.total_pages) * 100
+    
+    def get_total_percentage(self, collective_reading):
+        """Retorna o percentual geral baseado em TODOS os livros da leitura coletiva"""
+        total_pages = sum(book.total_pages for book in collective_reading.books)
+        if total_pages == 0:
+            return 0.0
+        
+        # Pegar o progresso total de TODOS os livros deste usuário
+        all_progress = CollectiveReadingProgress.query.filter_by(
+            collective_reading_id=collective_reading.id,
+            user_id=self.user_id
+        ).all()
+        
+        total_pages_read = sum(p.pages_read for p in all_progress)
+        return (total_pages_read / total_pages) * 100
+
+
 class UserFollower(db.Model):
     """Relação de seguimento entre usuários"""
     __tablename__ = 'user_followers'

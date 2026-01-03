@@ -24,7 +24,7 @@
                     <!-- <a href="{{ url_for('main.add_book') }}" class="nav-link">➕ Novo Livro</a>-->
                     <a href="{{ url_for('main.list_collective') }}" class="nav-link">👥 Leituras Coletivas</a>
                     <a href="{{ url_for('auth.settings') }}" class="nav-link">⚙️ Configurações</a>
-                    <a href="{{ url_for('auth.logout') }}" class="nav-link btn-danger">Sair</a>
+                    <a href="{{ url_for('auth.logout') }}" class="nav-link">Sair</a>
                 {% else %}
                     <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
                     <a href="{{ url_for('auth.register') }}" class="nav-link btn-primary">Registrar</a>
