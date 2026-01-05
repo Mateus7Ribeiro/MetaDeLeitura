@@ -110,7 +110,7 @@ def index():
 Login | Registrar
 
 <!-- Com login -->
-👤 username | ⚙️ Configurações | Meus Livros | + Novo Livro | Sair
+👤 username | ⚙️ Configurações | Minhas leituras | + Novo Livro | Sair
 ```
 
 ### Novos Templates

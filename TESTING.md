@@ -122,7 +122,7 @@ Crie dois usuários: `alice` e `bob`
 
 #### Teste: Navbar com Usuário
 - [ ] Faça login
-- [ ] Navbar mostra: 👤 username | ⚙️ Configurações | Meus Livros | + Novo Livro | Sair ✓
+- [ ] Navbar mostra: 👤 username | ⚙️ Configurações | Minhas leituras | + Novo Livro | Sair ✓
 
 #### Teste: Navbar sem Usuário
 - [ ] Faça logout

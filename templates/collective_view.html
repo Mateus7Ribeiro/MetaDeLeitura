@@ -103,36 +103,7 @@
                 <canvas id="progressChart"></canvas>
             </div>
 
-            <!-- Lista de Participantes em Linhas -->
-            <div class="participants-list">
-                {% for participant in collective.participants %}
-                    {% set ideal = collective.get_ideal_progress_percentage() %}
-                    {% set current = participant.current_percentage %}
-                    {% set status = participant.get_status() %}
-                    
-                    <div class="participant-row">
-                        <div class="participant-info">
-                            <span class="username">{{ participant.user.username }}</span>
-                            <span class="badge badge-{{ status }} badge-small">
-                                {% if status == 'adiantado' %}
-                                    🚀 Adiantado
-                                {% elif status == 'em_dia' %}
-                                    ✅ Em Dia
-                                {% else %}
-                                    ⏰ Atrasado
-                                {% endif %}
-                            </span>
-                        </div>
-                        
-                        <div class="participant-progress">
-                            <div class="progress-mini">
-                                <div class="progress-fill" style="width: {{ current }}%"></div>
-                            </div>
-                            
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
+            
         {% else %}
             <p class="empty-message">Nenhum participante ainda.</p>
         {% endif %}
@@ -193,16 +164,7 @@
                     </div>
                 </div>
                 
-                <!-- Preview da barra de progresso -->
-                <div style="margin-top: 1.5rem;">
-                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">Preview:</p>
-                    <div class="progress-bar-modal">
-                        <div class="progress-fill" id="modalProgressFill" style="width: 0%"></div>
-                    </div>
-                    <p id="progressPreview" 
-                       style="font-size: 0.85rem; color: #667eea; text-align: center; margin-top: 0.5rem; font-weight: bold; cursor: pointer; user-select: none;" 
-                       title="Clique para editar diretamente">0%</p>
-                </div>
+               
             </div>
         </div>
         <div class="modal-footer">
@@ -292,7 +254,6 @@
     }
     
     function updateProgressDisplay() {
-        const fill = document.getElementById('modalProgressFill');
         const preview = document.getElementById('progressPreview');
         let percentage = 0;
         
@@ -348,8 +309,6 @@
             document.getElementById('progressSlider').value = percentage.toFixed(1);
             
             // Atualizar barra
-            const fill = document.getElementById('modalProgressFill');
-            fill.style.width = Math.min(Math.max(percentage, 0), 100) + '%';
             document.getElementById('modalBookProgress').textContent = `Páginas lidas: ${pages}`;
             
             setTimeout(() => isUpdating = false, 50);
@@ -533,23 +492,37 @@
                             'rgba(59, 130, 246, 1)'
                         ];
                         
-                        // Criar dataset para cada livro
+                        // Calcular total de páginas de todos os livros
+                        const totalPagesAllBooks = participants[0].books.reduce((sum, book) => sum + book.total_pages, 0);
+                        
+                        // Criar dataset para cada livro (percentual proporcional ao total)
                         const datasets = bookOrders.map((bookOrder, index) => {
-                            // Encontrar o título do livro a partir do primeiro participante que tem esse livro
+                            // Encontrar o título e total de páginas do livro
                             let bookTitle = '';
+                            let bookTotalPages = 0;
                             for (let p of participants) {
                                 const book = p.books.find(b => b.order === bookOrder);
                                 if (book) {
                                     bookTitle = book.title;
+                                    bookTotalPages = book.total_pages;
                                     break;
                                 }
                             }
+                            
+                            // Peso deste livro em relação ao total (ex: livro com 200 páginas de um total de 600 = 33.33%)
+                            const bookWeight = totalPagesAllBooks > 0 ? (bookTotalPages / totalPagesAllBooks) * 100 : 0;
                             
                             return {
                                 label: `${bookOrder}. ${bookTitle}`,
                                 data: participants.map(p => {
                                     const book = p.books.find(b => b.order === bookOrder);
-                                    return book ? (book.percentage_of_book || 0) : 0;
+                                    if (!book) return 0;
+                                    
+                                    // Percentual de leitura deste livro (0-100%)
+                                    const bookPercentage = book.percentage_of_book || 0;
+                                    
+                                    // Percentual proporcional ao total: (progresso do livro × peso do livro)
+                                    return (bookPercentage / 100) * bookWeight;
                                 }),
                                 backgroundColor: colors[index % colors.length],
                                 borderColor: borderColors[index % borderColors.length],
@@ -996,7 +969,7 @@
 
     .modal-content {
         background-color: white;
-        margin: 5% auto;
+        margin: 3% auto;
         padding: 0;
         border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

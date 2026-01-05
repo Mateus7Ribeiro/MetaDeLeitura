@@ -10,17 +10,17 @@
     </div>
 
     <div class="tabs">
-        <button class="tab-button active" data-tab="created">
-            🎯 Criadas por mim ({{ created|length }})
-        </button>
-        <button class="tab-button " data-tab="participating">
+        <button class="tab-button active" data-tab="participating">
             👥 Participando ({{ participations|length }})
+        </button>
+        <button class="tab-button" data-tab="created">
+            🎯 Criadas por mim ({{ created|length }})
         </button>
     </div>
 
 
     <!-- Leituras participando -->
-    <div id="participating" class="tab-content">
+    <div id="participating" class="tab-content active">
         {% if participations %}
             <div class="collectives-grid">
                 {% for collective in participations %}
@@ -60,10 +60,9 @@
             </div>
         {% endif %}
     </div>
-</div>
 
     <!-- Leituras criadas -->
-    <div id="created" class="tab-content active">
+    <div id="created" class="tab-content">
         {% if created %}
             <div class="collectives-grid">
                 {% for collective in created %}

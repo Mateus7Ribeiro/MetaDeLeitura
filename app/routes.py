@@ -11,10 +11,39 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/')
 @login_required
 def index():
-    """Página inicial com lista de livros"""
+    """Página inicial com lista de livros (pessoais e de leituras coletivas)"""
     user = get_current_user()
-    books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
-    return render_template('index.html', books=books, user=user)
+    
+    # Livros pessoais
+    personal_books = Book.query.filter_by(user_id=user.id).order_by(Book.created_at.desc()).all()
+    
+    # Buscar leituras coletivas que o usuário participa
+    from app.models import CollectiveReadingParticipant, CollectiveReadingBook, CollectiveReadingProgress
+    participations = CollectiveReadingParticipant.query.filter_by(user_id=user.id).all()
+    
+    # Coletar todos os livros das leituras coletivas com progresso individual
+    collective_books = []
+    for participation in participations:
+        for book in participation.collective_reading.books:
+            # Buscar o progresso individual do usuário neste livro
+            progress = CollectiveReadingProgress.query.filter_by(
+                collective_reading_id=participation.collective_reading.id,
+                user_id=user.id,
+                book_order=book.order
+            ).first()
+            
+            # Adicionar metadados extras ao livro
+            book.is_collective = True
+            book.collective_reading_id = participation.collective_reading.id
+            book.collective_reading_name = participation.collective_reading.name
+            book.current_page = progress.pages_read if progress else 0
+            book.is_completed = False  # Livros coletivos não têm status de conclusão individual
+            collective_books.append(book)
+    
+    # Combinar livros pessoais e coletivos
+    all_books = personal_books + collective_books
+    
+    return render_template('index.html', books=all_books, user=user)
 
 @main_bp.route('/profile/<user_hash>')
 def view_profile(user_hash):

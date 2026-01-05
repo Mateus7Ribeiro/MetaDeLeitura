@@ -1,42 +1,55 @@
 {% extends "base.html" %}
 
-{% block title %}Meus Livros - Meta de Leitura{% endblock %}
+{% block title %}Minhas leituras - Meta de Leitura{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>Meus Livros</h2>
-    <p class="subtitle">Acompanhe suas metas de leitura</p>
+    <div class="page-header-content">
+        <div>
+            <h2>Minhas leituras</h2>
+            <p class="subtitle">Acompanhe suas metas de leitura</p>
+        </div>
+        <a href="{{ url_for('main.add_book') }}" class="btn btn-primary">➕ Novo Livro</a>
+    </div>
 </div>
 
 {% if books %}
     <div class="books-grid">
         {% for book in books %}
-        <div class="book-card {% if book.is_completed %}completed{% endif %}">
+        <div class="book-card {% if book.is_completed %}completed{% endif %} {% if book.is_collective %}collective{% endif %}">
             <div class="book-header">
-                <h3>{{ book.name }}</h3>
-                {% if book.is_completed %}
+                <h3>{{ book.title if book.is_collective else book.name }}</h3>
+                {% if book.is_collective %}
+                <span class="badge collective">👥 Leitura Coletiva</span>
+                {% elif book.is_completed %}
                 <span class="badge completed">✓ Concluído</span>
                 {% else %}
                 <span class="badge pending">Em Leitura</span>
                 {% endif %}
             </div>
             
+            {% if book.is_collective %}
+            <div class="collective-info">
+                <small>📚 {{ book.collective_reading_name }}</small>
+            </div>
+            {% endif %}
+            
             <div class="book-info">
                 <div class="info-row">
                     <span class="label">Progresso:</span>
-                    <span class="value">{{ book.current_page }}/{{ book.total_pages }} páginas</span>
+                    <span class="value">{{ book.current_page or 0 }}/{{ book.total_pages }} páginas</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ book.current_percentage }}%"></div>
-                    <span class="progress-text">{{ "%.1f"|format(book.current_percentage) }}%</span>
+                    <div class="progress-fill" style="width: {{ ((book.current_page or 0) / book.total_pages * 100) if book.total_pages > 0 else 0 }}%"></div>
+                    <span class="progress-text">{{ "%.1f"|format(((book.current_page or 0) / book.total_pages * 100) if book.total_pages > 0 else 0) }}%</span>
                 </div>
                 
                 <div class="info-row">
                     <span class="label">Data limite:</span>
-                    <span class="value">{{ book.target_date.strftime('%d/%m/%Y') }}</span>
+                    <span class="value">{{ book.end_date.strftime('%d/%m/%Y') if book.is_collective else book.target_date.strftime('%d/%m/%Y') }}</span>
                 </div>
                 
-                {% if not book.is_completed %}
+                {% if not book.is_completed  %}
                 <div class="meta-info">
                     <div class="meta-item">
                         <span class="meta-label">Dias restantes:</span>
@@ -52,11 +65,16 @@
             </div>
             
             <div class="book-actions">
+                {% if book.is_collective %}
+                <a href="{{ url_for('main.view_collective', collective_id=book.collective_reading_id) }}" class="btn btn-info">Ver Leitura Coletiva</a>
+                {% else %}
                 <a href="{{ url_for('main.view_book', book_id=book.id) }}" class="btn btn-info">Detalhes</a>
                 <a href="{{ url_for('main.edit_book', book_id=book.id) }}" class="btn btn-warning">Editar</a>
                 <form method="POST" action="{{ url_for('main.delete_book', book_id=book.id) }}" style="display: inline;" >
                     <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja deletar este livro?')">Deletar</button>
                 </form>
+                
+                {% endif %}
             </div>
         </div>
         {% endfor %}

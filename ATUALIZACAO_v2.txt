@@ -189,7 +189,7 @@ Livro: "1984" (MESMO)
 ### Depois de Login
 ```
 📚 Meta de Leitura
-👤 joao | ⚙️ Configurações | Meus Livros | + Novo Livro | [Sair]
+👤 joao | ⚙️ Configurações | Minhas leituras | + Novo Livro | [Sair]
 ```
 
 ### Dashboard de Login

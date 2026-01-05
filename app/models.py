@@ -5,6 +5,55 @@ import uuid
 import hashlib
 
 
+# ===== MIXIN PARA MÉTODOS COMUNS DE LIVROS =====
+class BookMethodsMixin:
+    """Métodos compartilhados entre Book e CollectiveReadingBook"""
+    
+    def get_pages_remaining(self):
+        """Retorna quantidade de páginas restantes"""
+        current = getattr(self, 'current_page', 0)
+        return max(0, self.total_pages - current)
+    
+    def get_percentage_remaining(self):
+        """Retorna percentual restante"""
+        current_percentage = getattr(self, 'current_percentage', 0.0)
+        return max(0.0, 100.0 - current_percentage)
+    
+    def get_pages_per_day(self):
+        """Calcula páginas por dia necessárias para atingir a meta"""
+        if getattr(self, 'is_completed', False):
+            return 0
+        
+        pages_remaining = self.get_pages_remaining()
+        if pages_remaining <= 0:
+            return 0
+        
+        now = datetime.utcnow()
+        target = getattr(self, 'target_date', getattr(self, 'end_date', None))
+        if not target:
+            return 0
+            
+        days_remaining = (target - now).days + 1
+        
+        if days_remaining <= 0:
+            return pages_remaining
+        
+        return pages_remaining / days_remaining
+    
+    def get_days_remaining(self):
+        """Retorna quantidade de dias até a data limite"""
+        if getattr(self, 'is_completed', False):
+            return 0
+        
+        now = datetime.utcnow()
+        target = getattr(self, 'target_date', getattr(self, 'end_date', None))
+        if not target:
+            return 0
+            
+        days = (target - now).days + 1
+        return max(0, days)
+
+
 class User(db.Model):
     __tablename__ = 'users'
     
@@ -67,7 +116,7 @@ class User(db.Model):
         }
 
 
-class Book(db.Model):
+class Book(BookMethodsMixin, db.Model):
     __tablename__ = 'books'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -100,44 +149,6 @@ class Book(db.Model):
         
         self.updated_at = datetime.utcnow()
         return self
-    
-    def get_pages_remaining(self):
-        """Retorna quantidade de páginas restantes"""
-        return max(0, self.total_pages - self.current_page)
-    
-    def get_percentage_remaining(self):
-        """Retorna percentual restante"""
-        return max(0.0, 100.0 - self.current_percentage)
-    
-    def get_pages_per_day(self):
-        """Calcula páginas por dia necessárias para atingir a meta"""
-        from datetime import datetime
-        
-        if self.is_completed:
-            return 0
-        
-        pages_remaining = self.get_pages_remaining()
-        if pages_remaining <= 0:
-            return 0
-        
-        now = datetime.utcnow()
-        days_remaining = (self.target_date - now).days
-        
-        if days_remaining <= 0:
-            return pages_remaining
-        
-        return pages_remaining / days_remaining
-    
-    def get_days_remaining(self):
-        """Retorna quantidade de dias até a data limite"""
-        from datetime import datetime
-        
-        if self.is_completed:
-            return 0
-        
-        now = datetime.utcnow()
-        days = (self.target_date - now).days
-        return max(0, days)
     
     def get_daily_reading_time(self):
         """Calcula tempo diário em minutos usando a velocidade do usuário"""
@@ -242,7 +253,7 @@ class CollectiveReading(db.Model):
         return (elapsed_days / total_days) * 100
 
 
-class CollectiveReadingBook(db.Model):
+class CollectiveReadingBook(BookMethodsMixin, db.Model):
     """Livros que fazem parte de uma leitura coletiva (em sequência)"""
     __tablename__ = 'collective_reading_books'
     
