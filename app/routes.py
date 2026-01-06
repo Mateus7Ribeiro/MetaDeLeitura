@@ -687,3 +687,71 @@ def join_collective_by_hash(share_hash):
     else:
         # Se não logado, mostrar página com opção de login/registro
         return render_template('collective_view.html', collective=collective, user=None, share_hash=share_hash)
+
+
+@main_bp.route('/profile/<user_hash>/followers')
+def view_followers(user_hash):
+    """Visualizar lista de seguidores de um usuário com paginação"""
+    profile_user = User.query.filter_by(user_hash=user_hash).first_or_404()
+    current_user = get_current_user() if session.get('user_id') else None
+    
+    # Paginação
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Buscar seguidores (quem segue este usuário)
+    followers_query = UserFollower.query.filter_by(following_id=profile_user.id)\
+        .order_by(UserFollower.created_at.desc())
+    
+    pagination = followers_query.paginate(page=page, per_page=per_page, error_out=False)
+    followers = pagination.items
+    
+    # Mapear para objetos User
+    follower_users = [User.query.get(f.follower_id) for f in followers]
+    
+    # Verificar se o usuário atual segue cada um
+    following_ids = set()
+    if current_user:
+        following_ids = {f.following_id for f in UserFollower.query.filter_by(follower_id=current_user.id).all()}
+    
+    return render_template('followers_list.html',
+                         profile_user=profile_user,
+                         users=follower_users,
+                         pagination=pagination,
+                         following_ids=following_ids,
+                         list_type='followers',
+                         user=current_user)
+
+
+@main_bp.route('/profile/<user_hash>/following')
+def view_following(user_hash):
+    """Visualizar lista de usuários que este usuário segue com paginação"""
+    profile_user = User.query.filter_by(user_hash=user_hash).first_or_404()
+    current_user = get_current_user() if session.get('user_id') else None
+    
+    # Paginação
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Buscar quem este usuário está seguindo
+    following_query = UserFollower.query.filter_by(follower_id=profile_user.id)\
+        .order_by(UserFollower.created_at.desc())
+    
+    pagination = following_query.paginate(page=page, per_page=per_page, error_out=False)
+    following = pagination.items
+    
+    # Mapear para objetos User
+    following_users = [User.query.get(f.following_id) for f in following]
+    
+    # Verificar se o usuário atual segue cada um
+    following_ids = set()
+    if current_user:
+        following_ids = {f.following_id for f in UserFollower.query.filter_by(follower_id=current_user.id).all()}
+    
+    return render_template('followers_list.html',
+                         profile_user=profile_user,
+                         users=following_users,
+                         pagination=pagination,
+                         following_ids=following_ids,
+                         list_type='following',
+                         user=current_user)

@@ -1,26 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}{{ profile_user.username }} - Perfil{% endblock %}
+{% block title %}{{ profile_user.name or profile_user.username }} - Perfil{% endblock %}
 
 {% block content %}
 <div class="profile-container">
     <div class="profile-header">
+        <div class="profile-avatar">
+            {% if profile_user.profile_picture %}
+                <img src="{{ profile_user.profile_picture }}" alt="{{ profile_user.username }}">
+            {% else %}
+                <div class="avatar-placeholder">👤</div>
+            {% endif %}
+        </div>
+        
         <div class="profile-info">
-            <h1>{{ profile_user.username }}</h1>
+            <h1>{{ profile_user.name or profile_user.username }}</h1>
+            <p class="username">@{{ profile_user.username }}</p>
             
             <div class="profile-stats">
                 <div class="stat">
                     <span class="stat-number">{{ profile_user.books|length }}</span>
                     <span class="stat-label">Livros</span>
                 </div>
-                <div class="stat">
+                <a href="{{ url_for('main.view_followers', user_hash=profile_user.user_hash) }}" class="stat stat-link">
                     <span class="stat-number">{{ followers_count }}</span>
                     <span class="stat-label">Seguidores</span>
-                </div>
-                <div class="stat">
+                </a>
+                <a href="{{ url_for('main.view_following', user_hash=profile_user.user_hash) }}" class="stat stat-link">
                     <span class="stat-number">{{ following_count }}</span>
                     <span class="stat-label">Seguindo</span>
-                </div>
+                </a>
             </div>
         </div>
         
@@ -78,14 +87,45 @@
         border-radius: 8px;
         margin-bottom: 2rem;
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
         gap: 2rem;
+        align-items: center;
+    }
+
+    .profile-avatar {
+        flex-shrink: 0;
+    }
+
+    .profile-avatar img,
+    .avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .avatar-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.2);
+        font-size: 3rem;
+    }
+
+    .profile-info {
+        flex: 1;
     }
 
     .profile-info h1 {
-        margin: 0 0 0.5rem 0;
+        margin: 0 0 0.25rem 0;
         font-size: 2rem;
+    }
+
+    .username {
+        margin: 0 0 1rem 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
     }
 
     .profile-email {
@@ -103,6 +143,17 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .stat-link {
+        transition: transform 0.2s ease;
+        cursor: pointer;
+    }
+
+    .stat-link:hover {
+        transform: translateY(-2px);
     }
 
     .stat-number {

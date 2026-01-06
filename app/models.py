@@ -59,8 +59,10 @@ class User(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(120))  # Nome completo editável
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    profile_picture = db.Column(db.String(500))  # URL ou caminho da foto
     reading_speed = db.Column(db.Float, default=2.5)  # minutos por página
     user_hash = db.Column(db.String(12), unique=True, nullable=False)  # Hash curta para perfil público
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
