@@ -58,7 +58,7 @@
                             </div>
                             <div class="book-actions">
                                 <button onclick="editBook({{ book.id }})" class="btn btn-info btn-small">✏️ Editar</button>
-                                <form method="POST" style="display:inline;" onsubmit="return confirm('Remover este livro?');">
+                                <form method="POST" class="book-action-form" onsubmit="return confirm('Remover este livro?');">
                                     <input type="hidden" name="action" value="remove_book">
                                     <input type="hidden" name="book_id" value="{{ book.id }}">
                                     <button type="submit" class="btn btn-danger btn-small">❌ Remover</button>
@@ -327,6 +327,11 @@
         gap: 0.5rem;
         align-items: flex-start;
     }
+
+    .book-action-form {
+        display: inline;
+        margin: 0;
+    }
     
     .book-edit-form {
         width: 100%;
@@ -442,7 +447,40 @@
             grid-template-columns: 1fr;
         }
 
-        .book-item {
+        .book-view {
+            flex-direction: column;
+        }
+
+        .book-cover {
+            width: 80px;
+            height: 120px;
+        }
+
+        .book-actions {
+            flex-direction: row;
+            width: 100%;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .book-action-form {
+            display: block;
+            flex: 1;
+            margin: 0;
+        }
+
+        .book-actions > button {
+            flex: 1;
+            margin: 0;
+        }
+
+        .book-actions .btn-small {
+            width: 100%;
+            padding: 0.75rem 0.5rem;
+            white-space: nowrap;
+        }
+
+        .edit-row {
             flex-direction: column;
         }
 

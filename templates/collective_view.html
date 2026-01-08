@@ -12,7 +12,7 @@
                 <span>👤 Criador: <strong>{{ collective.creator.username }}</strong></span>
                 <span>📅 {{ collective.start_date.strftime('%d/%m/%Y') }} - {{ collective.end_date.strftime('%d/%m/%Y') }}</span>
                 <span>📚 {{ collective.books|length }} livro(s)</span>
-                <span>👥 {{ collective.participants|length }} participante(s)</span>
+                <span class="participants-link" onclick="openParticipantsModal()">👥 {{ collective.participants|length }} participante(s)</span>
             </div>
         </div>
         <div class="header-actions">
@@ -29,7 +29,7 @@
 
                     {% if ns.is_participant %}
                         <div class="participant-actions">
-                            <button type="button" class="btn btn-outline-danger btn-sm"
+                            <button type="button" class="btn btn-sm"
                                     onclick="leaveCollective()">🚪 Sair da Leitura</button>
                         </div>
                     {% else %}
@@ -177,6 +177,40 @@
         <div class="modal-footer">
             <button onclick="closeProgressModal()" class="btn btn-secondary">Cancelar</button>
             <button onclick="saveProgress()" class="btn btn-primary">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Participantes -->
+<div id="participantsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>👥 Participantes da Leitura</h2>
+            <span class="modal-close" onclick="closeParticipantsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="participants-modal-list">
+                {% for participant in collective.participants %}
+                    <div class="participant-modal-item">
+                        <div class="participant-modal-info">
+                            {% if participant.user.profile_picture %}
+                                <img src="{{ participant.user.profile_picture }}" alt="{{ participant.user.username }}" class="participant-avatar">
+                            {% else %}
+                                <div class="participant-avatar-placeholder">{{ participant.user.username[0].upper() }}</div>
+                            {% endif %}
+                            <div class="participant-modal-details">
+                                <a href="{{ url_for('main.view_profile', user_hash=participant.user.user_hash) }}" class="participant-name">{{ participant.user.username }}</a>
+                                {% if participant.user.name %}
+                                    <span class="participant-fullname">{{ participant.user.name }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeParticipantsModal()" class="btn btn-secondary">Fechar</button>
         </div>
     </div>
 </div>
@@ -383,6 +417,15 @@
         link.select();
         document.execCommand('copy');
         alert('Link copiado! 📋');
+    }
+
+    // ===== FUNÇÕES DO MODAL DE PARTICIPANTES =====
+    function openParticipantsModal() {
+        document.getElementById('participantsModal').style.display = 'block';
+    }
+
+    function closeParticipantsModal() {
+        document.getElementById('participantsModal').style.display = 'none';
     }
 
     // ===== FUNÇÕES DA LEITURA COLETIVA =====
@@ -767,6 +810,18 @@
         font-size: 0.95rem;
     }
 
+    .participants-link {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+    }
+
+    .participants-link:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+
     .header-actions {
         display: flex;
         gap: 1rem;
@@ -834,6 +889,8 @@
         border-radius: 8px;
         overflow: hidden;
         transition: transform 0.2s;
+        padding: 0;
+        margin: 0;
     }
 
     .book-card:hover {
@@ -842,19 +899,27 @@
 
     .book-cover {
         width: 100%;
-        height: 250px;
+        max-width: 100%;
+        height: 280px;
         object-fit: cover;
+        object-position: center top;
+        display: block;
+        margin: 0;
+        padding: 0;
     }
 
     .book-placeholder {
         width: 100%;
-        height: 250px;
+        max-width: 100%;
+        height: 280px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 3rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        margin: 0;
+        padding: 0;
     }
 
     .book-info {
@@ -1171,13 +1236,14 @@
         
         /* Melhorar cards de livros */
         .books-carousel {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 1rem;
         }
         
         .book-cover,
         .book-placeholder {
-            height: 220px;
+            height: 200px;
+            min-height: 200px;
         }
         
         .book-info h4 {
@@ -1558,6 +1624,83 @@
         .progress-text {
             text-align: left;
         }
+    }
+
+    /* Participants Modal Styles */
+    .participants-modal-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .participant-modal-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        transition: all 0.2s ease;
+    }
+
+    .participant-modal-item:hover {
+        background: #f3f4f6;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .participant-modal-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .participant-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #667eea;
+    }
+
+    .participant-avatar-placeholder {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        border: 2px solid #667eea;
+    }
+
+    .participant-modal-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .participant-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #667eea;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .participant-name:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+
+    .participant-fullname {
+        font-size: 0.85rem;
+        color: #6b7280;
     }
 
 </style>
