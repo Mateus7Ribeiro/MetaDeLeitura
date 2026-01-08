@@ -445,6 +445,23 @@ def edit_collective(collective_id):
                 db.session.commit()
                 return redirect(url_for('main.edit_collective', collective_id=collective.id))
             
+            elif action == 'edit_book':
+                book_id = int(request.form.get('book_id'))
+                book = CollectiveReadingBook.query.get_or_404(book_id)
+                if book.collective_reading_id != collective.id:
+                    return render_template('error.html', message='Acesso negado'), 403
+                
+                # Atualizar campos
+                book.title = request.form.get('title')
+                book.total_pages = int(request.form.get('total_pages'))
+                book.order = int(request.form.get('order'))
+                book.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
+                book.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
+                book.cover_url = request.form.get('cover_url', '')
+                
+                db.session.commit()
+                return redirect(url_for('main.edit_collective', collective_id=collective.id))
+            
             elif action == 'remove_book':
                 book_id = int(request.form.get('book_id'))
                 book = CollectiveReadingBook.query.get_or_404(book_id)

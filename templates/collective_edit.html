@@ -41,23 +41,73 @@
         {% if collective.books %}
             <div class="books-list">
                 {% for book in collective.books|sort(attribute='order') %}
-                    <div class="book-item">
-                        <div class="book-cover">
-                            {% if book.cover_url %}
-                                <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="cover-image">
-                            {% else %}
-                                <div class="cover-placeholder">📖</div>
-                            {% endif %}
+                    <div class="book-item" id="book-{{ book.id }}">
+                        <!-- Visualização normal -->
+                        <div class="book-view" id="view-{{ book.id }}">
+                            <div class="book-cover">
+                                {% if book.cover_url %}
+                                    <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="cover-image">
+                                {% else %}
+                                    <div class="cover-placeholder">📖</div>
+                                {% endif %}
+                            </div>
+                            <div class="book-info">
+                                <h4>#{{ book.order }} - {{ book.title }}</h4>
+                                <p>{{ book.total_pages }} páginas</p>
+                                <p class="dates">{{ book.start_date.strftime('%d/%m/%Y') }} - {{ book.end_date.strftime('%d/%m/%Y') }}</p>
+                            </div>
+                            <div class="book-actions">
+                                <button onclick="editBook({{ book.id }})" class="btn btn-info btn-small">✏️ Editar</button>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('Remover este livro?');">
+                                    <input type="hidden" name="action" value="remove_book">
+                                    <input type="hidden" name="book_id" value="{{ book.id }}">
+                                    <button type="submit" class="btn btn-danger btn-small">❌ Remover</button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="book-info">
-                            <h4>#{{ book.order }} - {{ book.title }}</h4>
-                            <p>{{ book.total_pages }} páginas</p>
-                            <p class="dates">{{ book.start_date.strftime('%d/%m/%Y') }} - {{ book.end_date.strftime('%d/%m/%Y') }}</p>
-                        </div>
-                        <form method="POST" class="remove-form" onsubmit="return confirm('Remover este livro?');">
-                            <input type="hidden" name="action" value="remove_book">
+                        
+                        <!-- Formulário de edição (oculto) -->
+                        <form method="POST" class="book-edit-form" id="edit-{{ book.id }}" style="display:none;">
+                            <input type="hidden" name="action" value="edit_book">
                             <input type="hidden" name="book_id" value="{{ book.id }}">
-                            <button type="submit" class="btn btn-danger btn-small">❌ Remover</button>
+                            
+                            <div class="edit-row">
+                                <div class="form-group-inline">
+                                    <label>Ordem:</label>
+                                    <input type="number" name="order" value="{{ book.order }}" min="1" required class="input-small">
+                                </div>
+                                <div class="form-group-inline flex-1">
+                                    <label>Título:</label>
+                                    <input type="text" name="title" value="{{ book.title }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="edit-row">
+                                <div class="form-group-inline">
+                                    <label>Páginas:</label>
+                                    <input type="number" name="total_pages" value="{{ book.total_pages }}" min="1" required class="input-small">
+                                </div>
+                                <div class="form-group-inline flex-1">
+                                    <label>URL Capa:</label>
+                                    <input type="url" name="cover_url" value="{{ book.cover_url or '' }}" placeholder="https://...">
+                                </div>
+                            </div>
+                            
+                            <div class="edit-row">
+                                <div class="form-group-inline flex-1">
+                                    <label>Data Início:</label>
+                                    <input type="date" name="start_date" value="{{ book.start_date.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                                <div class="form-group-inline flex-1">
+                                    <label>Data Término:</label>
+                                    <input type="date" name="end_date" value="{{ book.end_date.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="edit-actions">
+                                <button type="submit" class="btn btn-success btn-small">💾 Salvar</button>
+                                <button type="button" onclick="cancelEdit({{ book.id }})" class="btn btn-secondary btn-small">❌ Cancelar</button>
+                            </div>
                         </form>
                     </div>
                 {% endfor %}
@@ -132,6 +182,20 @@
         document.execCommand('copy');
         alert('Link copiado!');
     }
+    
+    function editBook(bookId) {
+        // Ocultar visualização
+        document.getElementById('view-' + bookId).style.display = 'none';
+        // Mostrar formulário de edição
+        document.getElementById('edit-' + bookId).style.display = 'block';
+    }
+    
+    function cancelEdit(bookId) {
+        // Mostrar visualização
+        document.getElementById('view-' + bookId).style.display = 'flex';
+        // Ocultar formulário de edição
+        document.getElementById('edit-' + bookId).style.display = 'none';
+    }
 </script>
 
 <style>
@@ -203,12 +267,16 @@
     }
 
     .book-item {
-        display: flex;
-        gap: 1rem;
         padding: 1rem;
         background: #f8f9fa;
         border-radius: 6px;
         border-left: 4px solid #667eea;
+    }
+    
+    .book-view {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
     }
 
     .book-cover {
@@ -254,9 +322,53 @@
         font-size: 0.85rem !important;
     }
 
-    .remove-form {
+    .book-actions {
         display: flex;
-        align-items: flex-end;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+    
+    .book-edit-form {
+        width: 100%;
+    }
+    
+    .edit-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .form-group-inline {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .form-group-inline.flex-1 {
+        flex: 1;
+    }
+    
+    .form-group-inline label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .form-group-inline input {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .input-small {
+        width: 80px;
+    }
+    
+    .edit-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
     }
 
     .btn-small {
