@@ -170,6 +170,40 @@
         <p class="share-help">Compartilhe este link com seus amigos para que possam participar da leitura!</p>
     </div>
 
+    <!-- Gerenciamento de Moderadores (apenas para o criador) -->
+    {% if user.id == collective.creator_id %}
+    <div class="section">
+        <h3>👥 Moderadores</h3>
+        <p class="help-text">Moderadores podem editar livros, datas e configurações desta leitura coletiva.</p>
+        
+        {% if collective.moderators %}
+        <div class="moderators-list">
+            {% for mod in collective.moderators %}
+            <div class="moderator-item">
+                <div class="moderator-info">
+                    <span class="moderator-name">👤 {{ mod.user.username }}</span>
+                    <span class="moderator-since">desde {{ mod.added_at.strftime('%d/%m/%Y') }}</span>
+                </div>
+                <button onclick="removeModerator({{ mod.user.id }})" class="btn btn-danger btn-small">❌ Remover</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-message">Nenhum moderador adicionado ainda.</p>
+        {% endif %}
+        
+        <form onsubmit="addModerator(event)" class="add-moderator-form">
+            <div class="form-group">
+                <label for="moderator_username">Adicionar Moderador</label>
+                <div class="input-button-group">
+                    <input type="text" id="moderator_username" name="moderator_username" placeholder="Digite o nome de usuário" required>
+                    <button type="submit" class="btn btn-success">➕ Adicionar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
     <div class="actions">
         <a href="{{ url_for('main.list_collective') }}" class="btn btn-secondary">← Voltar</a>
     </div>
@@ -181,6 +215,60 @@
         input.select();
         document.execCommand('copy');
         alert('Link copiado!');
+    }
+    
+    function addModerator(event) {
+        event.preventDefault();
+        const username = document.getElementById('moderator_username').value;
+        
+        if (!username.trim()) {
+            alert('Por favor, digite um nome de usuário');
+            return;
+        }
+        
+        fetch('{{ url_for("main.add_moderator", collective_id=collective.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'username=' + encodeURIComponent(username)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Moderador adicionado com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao adicionar moderador');
+        });
+    }
+    
+    function removeModerator(userId) {
+        if (!confirm('Tem certeza que deseja remover este moderador?')) {
+            return;
+        }
+        
+        fetch('{{ url_for("main.remove_moderator", collective_id=collective.id, moderator_id=0) }}'.replace('/0', '/' + userId), {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Moderador removido com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao remover moderador');
+        });
     }
     
     function editBook(bookId) {
@@ -486,6 +574,75 @@
 
         .share-box {
             flex-direction: column;
+        }
+    }
+
+    /* Estilos para seção de moderadores */
+    .help-text {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .moderators-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .moderator-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+    }
+
+    .moderator-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .moderator-name {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .moderator-since {
+        color: #999;
+        font-size: 0.85rem;
+    }
+
+    .add-moderator-form {
+        margin-top: 1.5rem;
+    }
+
+    .input-button-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .input-button-group input {
+        flex: 1;
+    }
+
+    @media (max-width: 768px) {
+        .moderator-item {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+
+        .input-button-group {
+            flex-direction: column;
+        }
+
+        .input-button-group button {
+            width: 100%;
         }
     }
 </style>

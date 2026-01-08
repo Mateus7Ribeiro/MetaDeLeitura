@@ -253,6 +253,14 @@ class CollectiveReading(db.Model):
             return 0.0
         
         return (elapsed_days / total_days) * 100
+    
+    def is_moderator(self, user_id):
+        """Verifica se o usuário é moderador desta leitura coletiva"""
+        return any(mod.user_id == user_id for mod in self.moderators)
+    
+    def can_edit(self, user_id):
+        """Verifica se o usuário pode editar (criador ou moderador)"""
+        return self.creator_id == user_id or self.is_moderator(user_id)
 
 
 class CollectiveReadingBook(BookMethodsMixin, db.Model):
@@ -298,18 +306,24 @@ class CollectiveReadingParticipant(db.Model):
     user = db.relationship('User', backref='collective_participations')
     
     def __repr__(self):
-        return f'<CollectiveReadingParticipant {self.user.username}>'
+        return f'<CollectiveReadingParticipant {self.user.username if self.user else self.user_id}>'
+
+
+class CollectiveReadingModerator(db.Model):
+    """Moderadores/Co-administradores de uma leitura coletiva"""
+    __tablename__ = 'collective_reading_moderators'
     
-    def get_status(self):
-        """Retorna o status: 'adiantado', 'em_dia' ou 'atrasado'"""
-        ideal_progress = self.collective_reading.get_ideal_progress_percentage()
-        
-        # Margem de 5%
-        if self.current_percentage >= ideal_progress - 5:
-            if self.current_percentage <= ideal_progress + 5:
-                return 'em_dia'
-            return 'adiantado'
-        return 'atrasado'
+    id = db.Column(db.Integer, primary_key=True)
+    collective_reading_id = db.Column(db.Integer, db.ForeignKey('collective_readings.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    collective_reading = db.relationship('CollectiveReading', backref='moderators')
+    user = db.relationship('User', backref='moderated_collectives')
+    
+    def __repr__(self):
+        return f'<CollectiveReadingModerator collective_id={self.collective_reading_id} user_id={self.user_id}>'
 
 
 class CollectiveReadingProgress(db.Model):

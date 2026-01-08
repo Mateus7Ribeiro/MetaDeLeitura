@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="header-actions">
-            {% if user and user.id == collective.creator_id %}
+            {% if user and collective.can_edit(user.id) %}
                 <a href="{{ url_for('main.edit_collective', collective_id=collective.id) }}" class="btn btn-primary">✏️ Editar</a>
             {% endif %}
             {% if user %}

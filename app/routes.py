@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from app import db
-from app.models import Book, User, CollectiveReading, CollectiveReadingBook, CollectiveReadingParticipant, UserFollower
+from app.models import Book, User, CollectiveReading, CollectiveReadingBook, CollectiveReadingParticipant, CollectiveReadingModerator, UserFollower
 from app.auth import login_required, get_current_user
 from datetime import datetime
 import json
@@ -175,7 +175,7 @@ def view_book(book_id):
     
     # Verificar se o livro pertence ao usuário ou se é um livro público para visualizar
     if book.user_id != user.id:
-        return render_template('error.html', message='Acesso negado'), 403
+        return render_template('error.html', message='Acesso negado', user=user), 403
     
     return render_template('book_detail.html', book=book, user=user)
 
@@ -188,7 +188,7 @@ def edit_book(book_id):
     
     # Verificar permissão
     if book.user_id != user.id:
-        return render_template('error.html', message='Acesso negado'), 403
+        return render_template('error.html', message='Acesso negado', user=user), 403
     
     if request.method == 'POST':
         try:
@@ -230,7 +230,7 @@ def delete_book(book_id):
     
     # Verificar permissão
     if book.user_id != user.id:
-        return render_template('error.html', message='Acesso negado'), 403
+        return render_template('error.html', message='Acesso negado', user=user), 403
     
     db.session.delete(book)
     db.session.commit()
@@ -325,7 +325,7 @@ def view_public_book(book_id):
     
     # Apenas o proprietário ou um livro público pode ser visualizado
     if not book.is_public and book.user_id != current_user.id:
-        return render_template('error.html', message='Este livro é privado'), 403
+        return render_template('error.html', message='Este livro é privado', user=current_user), 403
     
     return render_template('book_public.html', book=book, current_user=current_user, is_owner=(book.user_id == current_user.id))
 # ===== ROTAS DE LEITURAS COLETIVAS =====
@@ -401,9 +401,9 @@ def edit_collective(collective_id):
     user = get_current_user()
     collective = CollectiveReading.query.get_or_404(collective_id)
     
-    # Verificar se é o criador
-    if collective.creator_id != user.id:
-        return render_template('error.html', message='Acesso negado'), 403
+    # Verificar se é o criador ou moderador
+    if not collective.can_edit(user.id):
+        return render_template('error.html', message='Acesso negado', user=user), 403
     
     if request.method == 'POST':
         try:
@@ -449,7 +449,7 @@ def edit_collective(collective_id):
                 book_id = int(request.form.get('book_id'))
                 book = CollectiveReadingBook.query.get_or_404(book_id)
                 if book.collective_reading_id != collective.id:
-                    return render_template('error.html', message='Acesso negado'), 403
+                    return render_template('error.html', message='Acesso negado', user=user), 403
                 
                 # Atualizar campos
                 book.title = request.form.get('title')
@@ -466,7 +466,7 @@ def edit_collective(collective_id):
                 book_id = int(request.form.get('book_id'))
                 book = CollectiveReadingBook.query.get_or_404(book_id)
                 if book.collective_reading_id != collective.id:
-                    return render_template('error.html', message='Acesso negado'), 403
+                    return render_template('error.html', message='Acesso negado', user=user), 403
                 
                 db.session.delete(book)
                 db.session.commit()
@@ -476,6 +476,71 @@ def edit_collective(collective_id):
             return render_template('collective_edit.html', collective=collective, error=str(e)), 400
     
     return render_template('collective_edit.html', collective=collective, user=user)
+
+@main_bp.route('/collective/<int:collective_id>/add-moderator', methods=['POST'])
+@login_required
+def add_moderator(collective_id):
+    """Adicionar moderador a uma leitura coletiva (apenas criador)"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Apenas o criador pode adicionar moderadores
+    if collective.creator_id != user.id:
+        return jsonify({'success': False, 'error': 'Apenas o criador pode adicionar moderadores'}), 403
+    
+    username = request.form.get('username')
+    if not username:
+        return jsonify({'success': False, 'error': 'Nome de usuário é obrigatório'})
+    
+    # Buscar usuário
+    moderator_user = User.query.filter_by(username=username).first()
+    if not moderator_user:
+        return jsonify({'success': False, 'error': 'Usuário não encontrado'})
+    
+    # Verificar se não é o próprio criador
+    if moderator_user.id == collective.creator_id:
+        return jsonify({'success': False, 'error': 'Criador já é administrador'})
+    
+    # Verificar se já é moderador
+    existing = CollectiveReadingModerator.query.filter_by(
+        collective_reading_id=collective_id,
+        user_id=moderator_user.id
+    ).first()
+    
+    if existing:
+        return jsonify({'success': False, 'error': 'Usuário já é moderador'})
+    
+    # Adicionar moderador
+    moderator = CollectiveReadingModerator(
+        collective_reading_id=collective_id,
+        user_id=moderator_user.id
+    )
+    db.session.add(moderator)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Moderador adicionado com sucesso'})
+
+@main_bp.route('/collective/<int:collective_id>/remove-moderator/<int:moderator_id>', methods=['POST'])
+@login_required
+def remove_moderator(collective_id, moderator_id):
+    """Remover moderador de uma leitura coletiva (apenas criador)"""
+    user = get_current_user()
+    collective = CollectiveReading.query.get_or_404(collective_id)
+    
+    # Apenas o criador pode remover moderadores
+    if collective.creator_id != user.id:
+        return jsonify({'success': False, 'error': 'Apenas o criador pode remover moderadores'}), 403
+    
+    # Buscar e remover moderador
+    moderator = CollectiveReadingModerator.query.filter_by(
+        collective_reading_id=collective_id,
+        user_id=moderator_id
+    ).first_or_404()
+    
+    db.session.delete(moderator)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Moderador removido com sucesso'})
 
 @main_bp.route('/collective/<int:collective_id>')
 def view_collective(collective_id):
@@ -496,7 +561,7 @@ def view_collective(collective_id):
     
     # Validar hash
     if share_hash != collective.share_hash:
-        return render_template('error.html', message='Link inválido'), 404
+        return render_template('error.html', message='Link inválido', user=user), 404
     
     return render_template('collective_view.html', collective=collective, user=user)
 
