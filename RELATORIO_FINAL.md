@@ -1,6 +1,6 @@
 # 📊 RELATÓRIO FINAL DE IMPLEMENTAÇÃO
 
-## Sistema de Leitura Coletiva v3.0 - Meta de Leitura
+## Sistema de Leitura Coletiva v3.0 - Mesa Literária
 
 ---
 

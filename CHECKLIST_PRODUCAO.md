@@ -1,4 +1,4 @@
-# Meta de Leitura v3.0 - Checklist de Produção
+# Mesa Literária v3.0 - Checklist de Produção
 
 ## 📋 Pré-Deploy
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script de backup para Meta de Leitura v3.0
+# Script de backup para Mesa Literária v3.0
 
 set -e
 
@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo "=========================================="
-echo "🔄 Backup - Meta de Leitura v3.0"
+echo "🔄 Backup - Mesa Literária v3.0"
 echo "=========================================="
 echo ""
 

@@ -1,4 +1,4 @@
-# 📚 Meta de Leitura
+# 📚 Mesa Literária
 
 Sistema web para controlar suas metas de leitura. Cadastre seus livros, defina datas de conclusão e o sistema calculará quantas páginas você precisa ler por dia para atingir sua meta.
 

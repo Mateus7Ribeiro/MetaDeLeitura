@@ -1,4 +1,4 @@
-# 🚀 Deploy PythonAnywhere - Meta de Leitura v3.0
+# 🚀 Deploy PythonAnywhere - Mesa Literária v3.0
 
 ## 📋 Pré-requisitos
 

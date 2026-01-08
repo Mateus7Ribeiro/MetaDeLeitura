@@ -108,7 +108,7 @@ def check_env_config():
 def main():
     print("\n")
     print("╔════════════════════════════════════════════╗")
-    print("║  META DE LEITURA - Verificação de Setup  ║")
+    print("║  MESA LITERÁRIA - Verificação de Setup  ║")
     print("╚════════════════════════════════════════════╝")
     
     checks = [

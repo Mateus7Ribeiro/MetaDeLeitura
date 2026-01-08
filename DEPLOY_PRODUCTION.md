@@ -1,4 +1,4 @@
-# Meta de Leitura v3.0 - Guia de Deploy para Produção
+# Mesa Literária v3.0 - Guia de Deploy para Produção
 
 ## 📋 Índice
 
@@ -574,4 +574,4 @@ Para problemas ou dúvidas:
 
 **Versão:** 3.0  
 **Última atualização:** Janeiro 2026  
-**Autor:** Meta de Leitura Team
+**Autor:** Mesa Literária Team

@@ -1,8 +1,8 @@
 @echo off
-REM Script para instalar o projeto Meta de Leitura no Windows
+REM Script para instalar o projeto Mesa Literária no Windows
 
 echo ========================================
-echo Instalador - Meta de Leitura
+echo Instalador - Mesa Literária
 echo ========================================
 echo.
 

@@ -2,7 +2,7 @@
 
 ## 📋 Sumário Executivo
 
-A implementação completa do sistema de Leitura Coletiva para o projeto Meta de Leitura foi concluída com sucesso. Todas as funcionalidades foram implementadas, testadas e validadas.
+A implementação completa do sistema de Leitura Coletiva para o projeto Mesa Literária foi concluída com sucesso. Todas as funcionalidades foram implementadas, testadas e validadas.
 
 ### ✅ Status Geral: COMPLETO
 

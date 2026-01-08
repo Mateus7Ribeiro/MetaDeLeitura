@@ -1,10 +1,10 @@
 #!/bin/bash
-# Script de deploy para produção - Meta de Leitura v3.0
+# Script de deploy para produção - Mesa Literária v3.0
 
 set -e  # Parar em caso de erro
 
 echo "=========================================="
-echo "🚀 Deploy - Meta de Leitura v3.0"
+echo "🚀 Deploy - Mesa Literária v3.0"
 echo "=========================================="
 echo ""
 

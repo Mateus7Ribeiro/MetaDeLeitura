@@ -182,13 +182,13 @@ Livro: "1984" (MESMO)
 
 ### Antes de Login
 ```
-📚 Meta de Leitura
+📚 Mesa Literária
 [Login] [Registrar]
 ```
 
 ### Depois de Login
 ```
-📚 Meta de Leitura
+📚 Mesa Literária
 👤 joao | ⚙️ Configurações | Minhas leituras | + Novo Livro | [Sair]
 ```
 

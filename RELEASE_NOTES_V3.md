@@ -1,9 +1,9 @@
-# Meta de Leitura v3.0 - Release Notes
+# Mesa Literária v3.0 - Release Notes
 
 ## 🎉 Versão 3.0 - Janeiro 2026
 
 ### 📋 Resumo
-Esta é a versão de produção completa do Meta de Leitura, incluindo perfis de usuário aprimorados, sistema de seguidores, leituras coletivas e configurações robustas de segurança.
+Esta é a versão de produção completa do Mesa Literária, incluindo perfis de usuário aprimorados, sistema de seguidores, leituras coletivas e configurações robustas de segurança.
 
 ---
 
@@ -270,7 +270,7 @@ python run.py
 
 ## 📜 Licença
 
-Copyright © 2026 Meta de Leitura Team
+Copyright © 2026 Mesa Literária Team
 All rights reserved.
 
 ---

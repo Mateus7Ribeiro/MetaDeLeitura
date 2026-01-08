@@ -1,8 +1,8 @@
 #!/bin/bash
-# Script para instalar o projeto Meta de Leitura no macOS/Linux
+# Script para instalar o projeto Mesa Literária no macOS/Linux
 
 echo "========================================"
-echo "Instalador - Meta de Leitura"
+echo "Instalador - Mesa Literária"
 echo "========================================"
 echo ""
 
