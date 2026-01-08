@@ -100,9 +100,16 @@
             <!-- Gráfico de Comparação (Horizontal) -->
             <div class="chart-section">
                 <h3>📊 Comparativo de Progresso</h3>
-                <canvas id="progressChart"></canvas>
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                </div>
             </div>
 
+            <!-- Lista de Participantes (Mobile-friendly) -->
+            <div class="participants-list-mobile">
+                <h3>📋 Detalhes por Participante</h3>
+                <div id="participantsList"></div>
+            </div>
             
         {% else %}
             <p class="empty-message">Nenhum participante ainda.</p>
@@ -519,7 +526,7 @@
                                     if (!book) return 0;
                                     
                                     // Percentual de leitura deste livro (0-100%)
-                                    const bookPercentage = book.percentage_of_book || 0;
+                                    const bookPercentage = parseFloat(book.percentage_of_book) || 0;
                                     
                                     // Percentual proporcional ao total: (progresso do livro × peso do livro)
                                     return (bookPercentage / 100) * bookWeight;
@@ -544,6 +551,15 @@
                             pointBackgroundColor: '#10b981'
                         });
                         
+                        // Ajustar altura do canvas baseado no número de participantes
+                        const barHeight = window.innerWidth <= 768 ? 60 : 40; // Maior no mobile
+                        const legendHeight = 80;
+                        const paddingHeight = 40;
+                        const calculatedHeight = (participants.length * barHeight) + legendHeight + paddingHeight;
+                        
+                        // Definir altura mínima do container
+                        chartCanvas.parentElement.style.minHeight = Math.max(calculatedHeight, 300) + 'px';
+                        
                         new Chart(chartCanvas, {
                             type: 'bar',
                             data: {
@@ -553,6 +569,15 @@
                             options: {
                                 indexAxis: 'y',
                                 responsive: true,
+                                maintainAspectRatio: false,
+                                layout: {
+                                    padding: {
+                                        top: 10,
+                                        bottom: 10,
+                                        left: 10,
+                                        right: 10
+                                    }
+                                },
                                 scales: {
                                     x: {
                                         beginAtZero: true,
@@ -565,7 +590,12 @@
                                         }
                                     },
                                     y: {
-                                        stacked: true
+                                        stacked: true,
+                                        ticks: {
+                                            font: {
+                                                size: window.innerWidth <= 768 ? 14 : 12
+                                            }
+                                        }
                                     }
                                 },
                                 plugins: {
@@ -589,14 +619,83 @@
                                     },
                                     legend: {
                                         display: true,
-                                        position: 'top'
+                                        position: 'top',
+                                        labels: {
+                                            font: {
+                                                size: window.innerWidth <= 768 ? 12 : 11
+                                            },
+                                            padding: window.innerWidth <= 768 ? 12 : 10
+                                        }
                                     }
                                 }
                             }
                         });
+                        
+                        // Popular lista mobile de participantes
+                        populateParticipantsList(participants);
                     }
                 })
                 .catch(err => console.log('Erro ao carregar dados do gráfico:', err));
+        }
+        
+        // ===== POPULAR LISTA MOBILE DE PARTICIPANTES =====
+        function populateParticipantsList(participants) {
+            const container = document.getElementById('participantsList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            participants.forEach(p => {
+                // Calcular progresso total proporcional
+                const totalPagesAllBooks = p.books.reduce((sum, book) => sum + book.total_pages, 0);
+                let totalProgress = 0;
+                
+                p.books.forEach(book => {
+                    const bookWeight = (book.total_pages / totalPagesAllBooks) * 100;
+                    const bookPercentage = book.percentage_of_book || 0;
+                    totalProgress += (bookPercentage / 100) * bookWeight;
+                });
+                
+                // Determinar status
+                const idealProgress = parseFloat('{{ "%.1f"|format(collective.get_ideal_progress_percentage()) }}');
+                let statusClass = 'em-dia';
+                let statusText = 'Em dia';
+                
+                if (totalProgress > idealProgress + 5) {
+                    statusClass = 'adiantado';
+                    statusText = 'Adiantado';
+                } else if (totalProgress < idealProgress - 5) {
+                    statusClass = 'atrasado';
+                    statusText = 'Atrasado';
+                }
+                
+                const card = document.createElement('div');
+                card.className = 'participant-mobile-card';
+                card.innerHTML = `
+                    <div class="participant-mobile-header">
+                        <div class="participant-mobile-name">
+                            <span class="name-text">👤 ${p.username}</span>
+                            <span class="badge badge-small badge-${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="participant-mobile-progress">
+                            <span class="progress-number">${totalProgress.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar-large">
+                        <div class="progress-fill" style="width: ${Math.min(totalProgress, 100)}%"></div>
+                    </div>
+                    <div class="participant-books-detail">
+                        ${p.books.map(book => `
+                            <div class="book-progress-item">
+                                <span class="book-title">${book.order}. ${book.title}</span>
+                                <span class="book-pages">${book.pages_read}/${book.total_pages} (${book.percentage_of_book.toFixed(1)}%)</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
         }
         
         // ===== ATUALIZAR PROGRESSO COM SLIDER =====
@@ -900,6 +999,108 @@
     .chart-section h3 {
         margin-bottom: 1rem;
     }
+    
+    .chart-container {
+        position: relative;
+        width: 100%;
+        min-height: 400px;
+        height: auto;
+    }
+    
+    .chart-container canvas {
+        width: 100% !important;
+        height: auto !important;
+    }
+    
+    .participants-list-mobile {
+        display: none;
+        margin-top: 2rem;
+    }
+    
+    .participants-list-mobile h3 {
+        margin-bottom: 1rem;
+        color: #333;
+    }
+    
+    .participant-mobile-card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .participant-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .participant-mobile-name {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .name-text {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #1f2937;
+    }
+    
+    .participant-mobile-progress {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .progress-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+    
+    .progress-bar-large {
+        width: 100%;
+        height: 12px;
+        background: #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-bar-large .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.3s ease;
+    }
+    
+    .participant-books-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .book-progress-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+    
+    .book-title {
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .book-pages {
+        color: #6b7280;
+        font-weight: 600;
+    }
 
     .share-section {
         text-align: center;
@@ -946,6 +1147,73 @@
 
         .header-content h1 {
             font-size: 1.8rem;
+        }
+        
+        /* Melhorias para gráfico no mobile */
+        .chart-container {
+            min-height: 600px;
+            height: auto;
+        }
+        
+        .chart-section {
+            overflow-x: auto;
+            overflow-y: visible;
+        }
+        
+        /* Mostrar lista mobile e esconder gráfico em telas pequenas */
+        .participants-list-mobile {
+            display: block;
+        }
+        
+        .chart-section h3 {
+            font-size: 1rem;
+        }
+        
+        /* Melhorar cards de livros */
+        .books-carousel {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        
+        .book-cover,
+        .book-placeholder {
+            height: 220px;
+        }
+        
+        .book-info h4 {
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        /* Em telas muito pequenas, priorizar lista */
+        .chart-section {
+            order: 2;
+        }
+        
+        .participants-list-mobile {
+            order: 1;
+        }
+
+        .chart-container {
+            min-height: 700px;
+            height: auto;
+        }
+        
+        .section {
+            padding: 1rem;
+        }
+        
+        .header-section {
+            padding: 1.5rem;
+        }
+        
+        .participant-mobile-card {
+            padding: 0.75rem;
+        }
+        
+        .progress-number {
+            font-size: 1.25rem;
         }
     }
 
