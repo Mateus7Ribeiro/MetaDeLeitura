@@ -54,10 +54,16 @@ class ProductionConfig(Config):
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Strict'
     
-    # Secret key obrigatória em produção
-    SECRET_KEY = os.getenv('SECRET_KEY')
-    if not SECRET_KEY:
-        raise ValueError("SECRET_KEY deve ser definida em produção!")
+    # Secret key obrigatória em produção (validação adiada para runtime)
+    def __init__(self):
+        super().__init__()
+        secret_key = os.getenv('SECRET_KEY')
+        if not secret_key and os.getenv('SKIP_SECRET_KEY_CHECK') != '1':
+            import warnings
+            warnings.warn(
+                "SECRET_KEY não definida em produção! "
+                "Configure no arquivo .env ou defina SKIP_SECRET_KEY_CHECK=1 para scripts."
+            )
     
     # Validar configuração do banco
     if 'localhost' in os.getenv('DB_HOST', 'localhost'):

@@ -1,12 +1,19 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from app.config import Config
+from app.config import config
+import os
 
 db = SQLAlchemy()
 
-def create_app(create_tables=True):
+def create_app(create_tables=True, config_name=None):
     app = Flask(__name__, template_folder='../templates', static_folder='../static')
-    app.config.from_object(Config)
+    
+    # Determinar configuração a usar
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'development')
+    
+    # Carregar configuração apropriada
+    app.config.from_object(config.get(config_name, config['development']))
     
     db.init_app(app)
     

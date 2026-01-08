@@ -74,57 +74,9 @@ pip list | grep -E "Flask|SQLAlchemy|pymysql"
 
 ---
 
-## 🗄️ Passo 3: Configurar Banco de Dados
+## 🗄️ Passo 3: Configurar Variáveis de Ambiente
 
-### 3.1 Backup Adicional (via interface web)
-
-1. Acesse **Databases** tab
-2. Clique em **Download** ao lado do database `YOUR_USERNAME$meta_leitura`
-3. Salve o arquivo `.sql.gz` localmente
-
-### 3.2 Preparar para Migração
-
-```bash
-# Conectar ao MySQL
-mysql -u YOUR_USERNAME -h YOUR_USERNAME.mysql.pythonanywhere-services.com -p
-
-# Verificar tabelas existentes
-USE YOUR_USERNAME$meta_leitura;
-SHOW TABLES;
-DESCRIBE users;
-DESCRIBE books;
-
-# Sair do MySQL
-exit;
-```
-
-### 3.3 Executar Migrações
-
-```bash
-cd ~/MetaDeLeitura
-
-# Ativar virtualenv
-workon metaleitura_v3
-
-# Executar migração para adicionar novos campos
-python migrate_add_user_fields.py
-
-# Verificar resultado
-python -c "
-from app import create_app, db
-from app.models import User
-app = create_app(create_tables=False)
-with app.app_context():
-    print('Usuários encontrados:', User.query.count())
-    user = User.query.first()
-    if user:
-        print('Campos do usuário:', [c.name for c in User.__table__.columns])
-"
-```
-
----
-
-## 🔧 Passo 4: Configurar Variáveis de Ambiente
+**⚠️ IMPORTANTE: Configure ANTES de executar migrações!**
 
 ```bash
 cd ~/MetaDeLeitura
@@ -153,12 +105,71 @@ LOG_LEVEL=INFO
 
 **Gerar SECRET_KEY:**
 ```bash
+workon metaleitura_v3
 python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**Salvar e sair:** Ctrl+O, Enter, Ctrl+X
+
+---
+
+## 🗄️ Passo 4: Configurar Banco de Dados
+
+### 4.1 Backup Adicional (via interface web)
+
+1. Acesse **Databases** tab
+2. Clique em **Download** ao lado do database `YOUR_USERNAME$meta_leitura`
+3. Salve o arquivo `.sql.gz` localmente
+
+### 4.2 Preparar para Migração
+
+```bash
+# Conectar ao MySQL
+mysql -u YOUR_USERNAME -h YOUR_USERNAME.mysql.pythonanywhere-services.com -p
+
+# Verificar tabelas existentes
+USE YOUR_USERNAME$meta_leitura;
+SHOW TABLES;
+DESCRIBE users;
+DESCRIBE books;
+
+# Sair do MySQL
+exit;
+```
+
+### 4.3 Executar Migrações
+
+```bash
+cd ~/MetaDeLeitura
+
+# Ativar virtualenv
+workon metaleitura_v3
+
+# Executar migração completa para v3.0 (RECOMENDADO)
+# Este script adiciona: name, profile_picture, user_hash e tabela user_followers
+python migrate_to_v3.py
+
+# OU executar migrações individualmente:
+# python migrate_add_user_fields.py  # Adiciona name e profile_picture
+# python migrate_user_hash.py        # Adiciona user_hash e user_followers
+
+# Verificar resultado
+python -c "
+from app import create_app, db
+from app.models import User
+app = create_app(create_tables=False)
+with app.app_context():
+    print('Usuários encontrados:', User.query.count())
+    user = User.query.first()
+    if user:
+        print('Campos do usuário:', [c.name for c in User.__table__.columns])
+        print('User hash:', user.user_hash)
+"
 ```
 
 ---
 
-## 📁 Passo 5: Restaurar Uploads da v1.0
+##  Passo 5: Restaurar Uploads da v1.0
 
 ```bash
 # Copiar fotos de perfil e uploads da v1.0
@@ -368,13 +379,22 @@ cat ~/MetaDeLeitura/.env | grep DB_
 mysql -u YOUR_USERNAME -h YOUR_USERNAME.mysql.pythonanywhere-services.com -p
 ```
 
+### Error: "Unknown column 'users.user_hash' in 'field list'"
+
+```bash
+# Executar migração completa
+cd ~/MetaDeLeitura
+workon metaleitura_v3
+python migrate_to_v3.py
+```
+
 ### Error: "Table 'users' doesn't have column 'name'"
 
 ```bash
-# Re-executar migração
+# Re-executar migração completa
 cd ~/MetaDeLeitura
 workon metaleitura_v3
-python migrate_add_user_fields.py
+python migrate_to_v3.py
 ```
 
 ### Static files não carregam
