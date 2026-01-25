@@ -28,8 +28,8 @@
                     </a>
                     <a href="{{ url_for('auth.logout') }}" class="nav-link">Sair</a>
                 {% else %}
-                    <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="nav-link btn-primary">Registrar</a>
+                    <a href="{{ url_for('auth.login', next=request.url) }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('auth.register', next=request.url) }}" class="nav-link btn-primary">Registrar</a>
                 {% endif %}
             </nav>
         </div>

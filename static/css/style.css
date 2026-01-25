@@ -303,6 +303,8 @@ main {
     justify-content: space-between;
     align-items: start;
     gap: 1rem;
+    height: 130px;
+
 }
 
 .book-header h3 {
