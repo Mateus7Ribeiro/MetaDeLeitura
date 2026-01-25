@@ -135,16 +135,16 @@ def add_book():
             
             # Validação
             if not name or total_pages <= 0:
-                return render_template('add_book.html', error='Nome e total de páginas são obrigatórios'), 400
+                return render_template('add_book.html', error='Nome e total de páginas são obrigatórios', user=user), 400
             
             if current_page > total_pages:
-                return render_template('add_book.html', error='Páginas atuais não podem exceder o total'), 400
+                return render_template('add_book.html', error='Páginas atuais não podem exceder o total', user=user), 400
             
             # Converter data
             try:
                 target_date = datetime.strptime(target_date_str, '%Y-%m-%d')
             except ValueError:
-                return render_template('add_book.html', error='Formato de data inválido'), 400
+                return render_template('add_book.html', error='Formato de data inválido', user=user), 400
             
             # Criar livro
             book = Book(
@@ -162,9 +162,9 @@ def add_book():
             
             return redirect(url_for('main.index'))
         except Exception as e:
-            return render_template('add_book.html', error=str(e)), 400
+            return render_template('add_book.html', error=str(e), user=user), 400
     
-    return render_template('add_book.html')
+    return render_template('add_book.html', user=user)
 
 @main_bp.route('/book/<int:book_id>')
 @login_required
