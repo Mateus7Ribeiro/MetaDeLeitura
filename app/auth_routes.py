@@ -46,6 +46,9 @@ def validate_password(password):
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     """Registrar novo usuário"""
+    # Pegar a URL para redirecionar após cadastro (do GET ou POST)
+    next_url = request.args.get('next') or request.form.get('next')
+    
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')
@@ -54,20 +57,20 @@ def register():
         
         # Validações
         if not username or not email or not password:
-            return render_template('register.html', error='Todos os campos são obrigatórios'), 400
+            return render_template('register.html', error='Todos os campos são obrigatórios', next_url=next_url), 400
         
         if password != password_confirm:
-            return render_template('register.html', error='Senhas não conferem'), 400
+            return render_template('register.html', error='Senhas não conferem', next_url=next_url), 400
         
         if len(password) < 6:
-            return render_template('register.html', error='Senha deve ter no mínimo 6 caracteres'), 400
+            return render_template('register.html', error='Senha deve ter no mínimo 6 caracteres', next_url=next_url), 400
         
         # Verificar se usuário já existe
         if User.query.filter_by(username=username).first():
-            return render_template('register.html', error='Nome de usuário já existe'), 400
+            return render_template('register.html', error='Nome de usuário já existe', next_url=next_url), 400
         
         if User.query.filter_by(email=email).first():
-            return render_template('register.html', error='Email já está registrado'), 400
+            return render_template('register.html', error='Email já está registrado', next_url=next_url), 400
         
         # Criar novo usuário
         user = User(username=username, email=email)
@@ -77,34 +80,49 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        return redirect(url_for('auth.login'))
+        # Fazer login automático após cadastro
+        session['user_id'] = user.id
+        session['username'] = user.username
+        
+        # Redirecionar para a URL original ou para index
+        if next_url:
+            return redirect(next_url)
+        return redirect(url_for('main.index'))
+    
+    return render_template('register.html', next_url=next_url)
     
     return render_template('register.html')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Login do usuário"""
+    # Pegar a URL para redirecionar após login (do GET ou POST)
+    next_url = request.args.get('next') or request.form.get('next')
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
         # Validações
         if not username or not password:
-            return render_template('login.html', error='Username e senha são obrigatórios'), 400
+            return render_template('login.html', error='Username e senha são obrigatórios', next_url=next_url), 400
         
         # Verificar usuário
         user = User.query.filter_by(username=username).first()
         
         if not user or not user.check_password(password):
-            return render_template('login.html', error='Username ou senha incorretos'), 400
+            return render_template('login.html', error='Username ou senha incorretos', next_url=next_url), 400
         
         # Criar sessão
         session['user_id'] = user.id
         session['username'] = user.username
         
+        # Redirecionar para a URL original ou para index
+        if next_url:
+            return redirect(next_url)
         return redirect(url_for('main.index'))
     
-    return render_template('login.html')
+    return render_template('login.html', next_url=next_url)
 
 @auth_bp.route('/logout')
 def logout():

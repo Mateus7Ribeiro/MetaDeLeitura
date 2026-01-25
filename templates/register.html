@@ -19,6 +19,9 @@
             {% endif %}
             
             <form method="POST" class="form">
+                {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+                {% endif %}
                 <div class="form-group">
                     <label for="username">Nome de Usuário</label>
                     <input type="text" id="username" name="username" required placeholder="Escolha um nome de usuário">
@@ -43,7 +46,7 @@
             </form>
             
             <p class="auth-footer">
-                Já tem conta? <a href="{{ url_for('auth.login') }}">Faça login aqui</a>
+                Já tem conta? <a href="{{ url_for('auth.login', next=next_url) if next_url else url_for('auth.login') }}">Faça login aqui</a>
             </p>
         </div>
     </div>

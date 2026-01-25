@@ -37,7 +37,7 @@
                         class="btn btn-primary">👥 Aderir</a>
                     {% endif %}
             {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">🔐 Login para Participar</a>
+                <a href="{{ url_for('auth.login', next=request.url) }}" class="btn btn-primary">🔐 Login para Participar</a>
             {% endif %}
         </div>
     </div>
@@ -47,7 +47,11 @@
         <h2>📖 Livros em Sequência</h2>
         <div class="books-carousel">
             {% for book in collective.books|sort(attribute='order') %}
-                <div class="book-card" onclick="openProgressModal({{ book.order }}, '{{ book.title }}', {{ book.total_pages }})">
+                {% if user and is_participant %}
+                    <div class="book-card" onclick="openProgressModal({{ book.order }}, '{{ book.title }}', {{ book.total_pages }})">
+                {% else %}
+                    <div class="book-card" >
+                {% endif %}
                     {% if book.cover_url %}
                         <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="book-cover">
                     {% else %}
@@ -91,7 +95,7 @@
             </div>
         </div>
     </div>
-
+    {% if user and is_participant %}
     <!-- Progresso dos Participantes -->
     <div class="section">
         <h2>👥 Progresso dos Participantes</h2>
@@ -115,6 +119,7 @@
             <p class="empty-message">Nenhum participante ainda.</p>
         {% endif %}
     </div>
+    {% endif %}
 
     <!-- Link de Compartilhamento -->
     <div class="section share-section">
@@ -182,6 +187,7 @@
 </div>
 
 <!-- Modal de Participantes -->
+{% if user and is_participant %}
 <div id="participantsModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -214,6 +220,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

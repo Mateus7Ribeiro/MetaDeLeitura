@@ -547,10 +547,16 @@ def view_collective(collective_id):
     """Visualizar leitura coletiva (público ou privado com link)"""
     collective = CollectiveReading.query.get_or_404(collective_id)
     user = get_current_user() if session.get('user_id') else None
+    is_participant = False
+    if user:
+        is_participant = CollectiveReadingParticipant.query.filter_by(
+            collective_reading_id=collective.id,
+            user_id=user.id
+        ).first() is not None
     
     # Se é o criador, pode ver sempre
     if user and user.id == collective.creator_id:
-        return render_template('collective_view.html', collective=collective, user=user)
+        return render_template('collective_view.html', collective=collective, user=user, is_participant=is_participant)
     
     # Para outros usuários (ou não logados), verificar hash
     share_hash = request.args.get('hash')
@@ -563,7 +569,7 @@ def view_collective(collective_id):
     if share_hash != collective.share_hash:
         return render_template('error.html', message='Link inválido', user=user), 404
     
-    return render_template('collective_view.html', collective=collective, user=user)
+    return render_template('collective_view.html', collective=collective, user=user, is_participant=is_participant)
 
 @main_bp.route('/collective/<int:collective_id>/join')
 @login_required
@@ -768,7 +774,7 @@ def join_collective_by_hash(share_hash):
         return redirect(url_for('main.view_collective', collective_id=collective.id, hash=share_hash))
     else:
         # Se não logado, mostrar página com opção de login/registro
-        return render_template('collective_view.html', collective=collective, user=None, share_hash=share_hash)
+        return render_template('collective_view.html', collective=collective, user=None, share_hash=share_hash, is_participant=False)
 
 
 @main_bp.route('/profile/<user_hash>/followers')
